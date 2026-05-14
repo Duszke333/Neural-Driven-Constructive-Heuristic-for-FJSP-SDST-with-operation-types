@@ -31,13 +31,14 @@ namespace jobshop {
     namespace fs = std::filesystem;
 
 
-    void readFjsFile( string file_name, const map<vector<pair<int, int>>, int> &OperationTypesMap, int M, JobshopData &_IOD) {
+    void readFjsFile(string file_name, const map<vector<pair<int, int> >, int> &OperationTypesMap, int M,
+                     JobshopData &_IOD) {
         JobshopData IOD;
 
-        auto getOT = [&](vector<pair<int, int>>& data) -> int {
+        auto getOT = [&](vector<pair<int, int> > &data) -> int {
             auto it = OperationTypesMap.find(data);
             if (it == OperationTypesMap.end()) {
-                ERROR( "Unknown operation type.");
+                ERROR("Unknown operation type.");
             }
             return it->second;
         };
@@ -51,12 +52,22 @@ namespace jobshop {
         int jidx = 0;
         int line_number = 0;
         std::string line;
-        while (std::getline(ifs, line)) {  // Read each line
+        bool reading_setups = false;
+        while (std::getline(ifs, line)) {
+            // Skip empty lines
+            if (line.empty() || line.find_first_not_of(" \t\r\n") == std::string::npos) continue;
+            if (line.find("SDST") != std::string::npos) {
+                reading_setups = true;
+                break; // Wychodzimy z głównej pętli, przezbrojenia wczytamy osobną
+            }
+
+            // Read each line
             std::vector<int> numbers;
             std::istringstream iss(line);
             int num;
 
-            while (iss >> num) {  // Extract numbers from the line
+            while (iss >> num) {
+                // Extract numbers from the line
                 numbers.push_back(num);
             }
 
@@ -66,9 +77,9 @@ namespace jobshop {
                 IOD.numJ = numbers[0];
                 IOD.numM = numbers[1];
                 if (IOD.numM != M) {
-                    ERROR("Inconsistent number of machines in the input file (" + file_name + ": " + to_string(IOD.numM) + " != " + to_string(M) +  ")");
+                    ERROR("Inconsistent number of machines in the input file (" + file_name + ": " + to_string(IOD.numM)
+                        + " != " + to_string(M) + ")");
                 }
-
             } else {
                 set<int> OTs;
                 IOD.Jobs.push_back(JobshopData::JType());
@@ -78,20 +89,21 @@ namespace jobshop {
                 int idx = 1;
 
                 // analyse all the operations
-                for ( int i = 0; i < numbers[0]; i++ ) {
-                    vector<pair<int, int>> Alternatives;
+                for (int i = 0; i < numbers[0]; i++) {
+                    vector<pair<int, int> > Alternatives;
                     int num_alt = numbers[idx++];
-                    for ( int a = 0; a < num_alt; a++ ) {
+                    for (int a = 0; a < num_alt; a++) {
                         int m = numbers[idx++] - 1;
                         int t = numbers[idx++];
-                        if( m >= IOD.numM ) INTERNAL("m > numM");
+                        if (m >= IOD.numM) INTERNAL("m > numM");
 
                         Alternatives.push_back(make_pair(m, t));
                     }
 
                     int ot = getOT(Alternatives);
                     if (OTs.find(ot) != OTs.end()) {
-                        ERROR( "There may be only one operation of a give type in a single job (" + file_name + ": " + to_string(line_number) + ", op:" + to_string(i) +")");
+                        ERROR("There may be only one operation of a give type in a single job (" + file_name + ": " +
+                            to_string(line_number) + ", op:" + to_string(i) +")");
                     }
                     IOD.Jobs.back().Ops.push_back(ot);
                 }
@@ -106,15 +118,36 @@ namespace jobshop {
         IOD.OMtime.assign(IOD.numO, vector<int>(IOD.numM, 0));
 
 
-        for ( auto &OT: OperationTypesMap ) {
+        for (auto &OT: OperationTypesMap) {
             auto &Alts = OT.first;
             int ot = OT.second;
             if (ot >= IOD.numO) INTERNAL("Operation out of range");
-            for ( auto &alt: Alts) {
+            for (auto &alt: Alts) {
                 if (alt.first >= IOD.numM) INTERNAL("Machine out of range");
                 IOD.OMtime[ot][alt.first] = alt.second;
             }
         }
+
+        // TODO: TEST
+        IOD.setupTimes.assign(IOD.numO, std::vector<std::vector<int>>(IOD.numO, std::vector<int>(IOD.numM, 0)));
+
+        if (reading_setups) {
+            for (int m = 0; m < IOD.numM; ++m) {
+                // Skipping "Machine X" line
+                std::getline(ifs, line);
+
+                for (int i = 0; i < IOD.numO; ++i) {
+                    if (!std::getline(ifs, line)) break;
+                    std::istringstream iss(line);
+                    for (int j = 0; j < IOD.numO; ++j) {
+                        if (int val; iss >> val) {
+                            IOD.setupTimes[m][i][j] = val;
+                        }
+                    }
+                }
+            }
+        }
+
         _IOD = IOD;
     }
 
@@ -123,7 +156,8 @@ namespace jobshop {
       * @param dir_path
       * @return
       */
-    void readFjsDir( string dir_path, const map<vector<pair<int, int>>, int> &OperationTypesMap, int M, vector<JobshopData> &IODs) {
+    void readFjsDir(string dir_path, const map<vector<pair<int, int> >, int> &OperationTypesMap, int M,
+                    vector<JobshopData> &IODs) {
         IODs.clear();
 
         // Check if directory exists
@@ -132,7 +166,7 @@ namespace jobshop {
         }
 
         // Iterate through directory entries
-        for (const auto& entry : fs::directory_iterator(dir_path)) {
+        for (const auto &entry: fs::directory_iterator(dir_path)) {
             if (entry.is_regular_file() && entry.path().extension() == ".fjs") {
                 JobshopData IOD;
                 readFjsFile(entry.path().string(), OperationTypesMap, M, IOD);
@@ -140,10 +174,7 @@ namespace jobshop {
                 IODs.push_back(IOD);
             }
         }
-
     }
-
-
 
 
     /**
@@ -152,9 +183,9 @@ namespace jobshop {
      * @param OperationTypesMap
      * @param M
      */
-    void extractOperationTypesMachinesFromFile( string file_name, map<vector<pair<int, int>>, int> &OperationTypesMap, int &M) {
-
-        auto get_or_insert = [&](vector<pair<int, int>>& data) -> int {
+    void extractOperationTypesMachinesFromFile(string file_name, map<vector<pair<int, int> >, int> &OperationTypesMap,
+                                               int &M) {
+        auto get_or_insert = [&](vector<pair<int, int> > &data) -> int {
             auto [it, inserted] = OperationTypesMap.try_emplace(data, OperationTypesMap.size());
             return it->second;
         };
@@ -167,12 +198,15 @@ namespace jobshop {
         int jidx = 0;
         int line_number = 0;
         std::string line;
-        while (std::getline(ifs, line)) {  // Read each line
+
+        while (std::getline(ifs, line)) {
+            // Read each line
             std::vector<int> numbers;
             std::istringstream iss(line);
             int num;
 
-            while (iss >> num) {  // Extract numbers from the line
+            while (iss >> num) {
+                // Extract numbers from the line
                 numbers.push_back(num);
             }
 
@@ -180,21 +214,22 @@ namespace jobshop {
 
             if (line_number == 0) {
                 if (M > 0 && M != numbers[1]) {
-                    INTERNAL("Inconsistent number of machines over input files (" + file_name + ": " + to_string(numbers[1]) + " != " + to_string(M) +  ")");
+                    INTERNAL(
+                        "Inconsistent number of machines over input files (" + file_name + ": " + to_string(numbers[1])
+                        + " != " + to_string(M) + ")");
                 }
                 M = numbers[1];
-
             } else {
                 int idx = 1;
 
                 // analyse all the operations
-                for ( int i = 0; i < numbers[0]; i++ ) {
-                    vector<pair<int, int>> Alternatives;
+                for (int i = 0; i < numbers[0]; i++) {
+                    vector<pair<int, int> > Alternatives;
                     int num_alt = numbers[idx++];
-                    for ( int a = 0; a < num_alt; a++ ) {
+                    for (int a = 0; a < num_alt; a++) {
                         int m = numbers[idx++] - 1;
                         int t = numbers[idx++];
-                        if( m >= M ) INTERNAL("m > M");
+                        if (m >= M) INTERNAL("m > M");
 
                         Alternatives.push_back(make_pair(m, t));
                     }
@@ -208,7 +243,8 @@ namespace jobshop {
     }
 
 
-    void extractOperationTypesAndMFromDir( string dir_name, map<vector<pair<int, int>>, int> &OperationTypesMap, int &M) {
+    void extractOperationTypesAndMFromDir(string dir_name, map<vector<pair<int, int> >, int> &OperationTypesMap,
+                                          int &M) {
         // Check if directory exists
         if (!fs::exists(dir_name) || !fs::is_directory(dir_name)) {
             ERROR("Directory does not exist or is not a directory: " + dir_name);
@@ -219,14 +255,14 @@ namespace jobshop {
         M = 0;
 
         // Iterate through directory entries
-        for (const auto& entry : fs::directory_iterator(dir_name)) {
+        for (const auto &entry: fs::directory_iterator(dir_name)) {
             if (entry.is_regular_file() && entry.path().extension() == ".fjs") {
-                extractOperationTypesMachinesFromFile( entry.path().string(), OperationTypesMap, M);
+                extractOperationTypesMachinesFromFile(entry.path().string(), OperationTypesMap, M);
             }
         }
     }
 
-    void generateBrandimarte( Config Cfg ) {
+    void generateBrandimarte(Config Cfg) {
         typedef jobshop::GeneratorTxt GeneratorType;
         typedef GeneratorType::GenConfigType GenConfigType;
         typedef nnutils::FFN ASType;
@@ -249,11 +285,11 @@ namespace jobshop {
 
         jobshop::dataExport_fjs(TotalData, Cfg.output_dir + "/", mkname);
 
-        auto ofs = nnutils::openFileWithDirs<ofstream>(Cfg.output_dir + "/" +  "parameters.txt");
+        auto ofs = nnutils::openFileWithDirs<ofstream>(Cfg.output_dir + "/" + "parameters.txt");
         ofs << Cfg;
     }
 
-    void generateRandom( Config Cfg ) {
+    void generateRandom(Config Cfg) {
         typedef jobshop::GeneratorRnd GeneratorType;
         typedef GeneratorType::GenConfigType GenConfigType;
         typedef nnutils::FFN ASType;
@@ -276,16 +312,14 @@ namespace jobshop {
         vector<TCHType::DataType> TotalData;
 
         Generator.load(Cfg.seed, Cfg.set_size, TotalData);
-
         jobshop::dataExport_fjs(TotalData, Cfg.output_dir + "/", GConfTmp.nameBase);
 
-        auto ofs = nnutils::openFileWithDirs<ofstream>(Cfg.output_dir + "/" +  "parameters.txt");
+        auto ofs = nnutils::openFileWithDirs<ofstream>(Cfg.output_dir + "/" + "parameters.txt");
         ofs << Cfg;
     }
 
 
-    void train( Config Cfg ) {
-
+    void train(Config Cfg) {
         std::filesystem::current_path(".");
 
         // typedef jobshop::GeneratorTxt GeneratorType;
@@ -301,14 +335,14 @@ namespace jobshop {
         vector<JobshopData> TotalData;
 
         cout << "Reading operation types from the input data..." << endl;
-        extractOperationTypesAndMFromDir( Cfg.files_dir, OperationTypesMap, M);
+        extractOperationTypesAndMFromDir(Cfg.files_dir, OperationTypesMap, M);
 
         cout << "Reading input data..." << endl;
-        readFjsDir( Cfg.files_dir, OperationTypesMap, M, TotalData);
+        readFjsDir(Cfg.files_dir, OperationTypesMap, M, TotalData);
 
-        cout << to_string( TotalData.size() ) << " files read." << endl;
+        cout << to_string(TotalData.size()) << " files read." << endl;
 
-        if (Cfg.val_set_size*2 > TotalData.size()) {
+        if (Cfg.val_set_size * 2 > TotalData.size()) {
             ERROR("Too small traing data set (Cfg.val_set_size < 2 * TotalData.size())");
         }
 
@@ -347,21 +381,23 @@ namespace jobshop {
             .noAutoScaleEval = false,
             .autoScale = false,
             .autoScaleNumOperationsInfo = false,
-            .nextOperationInfo=false,
+            .nextOperationInfo = false,
             .numOperationsInfo = true,
             .numAllOperationsInfo = false,
             .numM = GConf.numM,
             .numO = GConf.numO,
-            .AConf = {.
-                numInputs = 2*GConf.numM + 2*GConf.numO + GConf.numO  + 1,
-            .Topology = {Cfg.layer1, Cfg.layer2, 1}},
-             .GConf = GConf
+            .AConf = {
+                .
+                numInputs = 2 * GConf.numM + 2 * GConf.numO + GConf.numO + 1,
+                .Topology = {Cfg.layer1, Cfg.layer2, 1}
+            },
+            .GConf = GConf
         };
 
         {
-            auto  ifs = ifstream(Cfg.output_dir + "/network.dat", ios::binary);
+            auto ifs = ifstream(Cfg.output_dir + "/network.dat", ios::binary);
             if (ifs.is_open()) {
-                ERROR("Results file already present, remove it, exiting... (" +Cfg.output_dir + "/network.dat)" );
+                ERROR("Results file already present, remove it, exiting... (" +Cfg.output_dir + "/network.dat)");
             }
         }
 
@@ -376,10 +412,10 @@ namespace jobshop {
 
         vector<double> ParamsOut;
 
-        TCHType CH( CHConf);
+        TCHType CH(CHConf);
         TCHType CHOut;
 
-        double ret = chof::learn(LConfig,  CH, TotalData, ValidationData, CHOut);
+        double ret = chof::learn(LConfig, CH, TotalData, ValidationData, CHOut);
 
         {
             auto ofs = nnutils::openFileWithDirs<ofstream>(Cfg.output_dir + "/network.dat", ios::binary);
@@ -390,15 +426,15 @@ namespace jobshop {
 
             auto outfile2 = nnutils::openFileWithDirs<ofstream>(Cfg.output_dir + "/operations.txt");
             outfile2 << "operation_type: num_alternatives (machine, time) ..." << endl;
-            vector<vector<pair<int, int>>> Ops(OperationTypesMap.size());
-            for ( auto it: OperationTypesMap ) {
+            vector<vector<pair<int, int> > > Ops(OperationTypesMap.size());
+            for (auto it: OperationTypesMap) {
                 Ops[it.second] = it.first;
             }
-            for ( int i = 0; i <  Ops.size(); i++ ) {
+            for (int i = 0; i < Ops.size(); i++) {
                 auto &Op = Ops[i];
                 outfile2 << std::right << std::setw(5) << i << ": ";
                 outfile2 << Op.size() << " ";
-                for ( auto p: Op ) {
+                for (auto p: Op) {
                     outfile2 << "(" << p.first << ", " << p.second << ") ";
                 }
                 outfile2 << endl;
@@ -413,8 +449,7 @@ namespace jobshop {
      *
      * @param Cfg
      */
-    void test( Config Cfg ) {
-
+    void test(Config Cfg) {
         bool single = (Cfg.max_evals == 1);
 
         std::filesystem::current_path(".");
@@ -445,8 +480,8 @@ namespace jobshop {
             cout << " ok." << endl << flush;
         }
 
-        cout << "Reading input data..." ;
-        readFjsDir( Cfg.files_dir, OperationTypesMap, M, TotalData);
+        cout << "Reading input data...";
+        readFjsDir(Cfg.files_dir, OperationTypesMap, M, TotalData);
         cout << " ok." << endl << flush;
 
         if (TotalData.empty()) {
@@ -475,8 +510,7 @@ namespace jobshop {
 
         auto time_start = std::chrono::steady_clock::now();
 
-        for ( auto &D: TotalData ) {
-
+        for (auto &D: TotalData) {
             typename TCHType::DataType::SolutionType S;
 
             double time_ms = 0.0;
@@ -485,16 +519,17 @@ namespace jobshop {
                 S = BCH.run(D);
             } else {
                 TCHType BCHOut;
-                S = chof::opt(OConf,  BCH, D, BCHOut);
+                S = chof::opt(OConf, BCH, D, BCHOut);
             }
             auto time_end = std::chrono::steady_clock::now();
             auto elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>(time_end - time_start).count();
-            time_ms = (double)elapsed_us/1000.0;
+            time_ms = (double) elapsed_us / 1000.0;
             D.setSolution(S);
 
             cout << "." << flush;
 
-            ofs_det << "eval" << "; " << Cfg.files_dir << "; " << D.name << "; " << S.getObj() <<  "; " << time_ms << ";" << endl << flush;
+            ofs_det << "eval" << "; " << Cfg.files_dir << "; " << D.name << "; " << S.getObj() << "; " << time_ms << ";"
+                    << endl << flush;
 
             sum += S.getObj();
             num++;
@@ -503,29 +538,22 @@ namespace jobshop {
         auto time_end = std::chrono::steady_clock::now();
         auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(time_end - time_start).count();
 
-        double time_avg_ms = (double)elapsed_ms / TotalData.size();
+        double time_avg_ms = (double) elapsed_ms / TotalData.size();
 
-        ofs_sum << "eval" << "; " << Cfg.files_dir << "; ; " << sum/num << "; " << time_avg_ms << endl << flush;
+        ofs_sum << "eval" << "; " << Cfg.files_dir << "; ; " << sum / num << "; " << time_avg_ms << endl << flush;
 
         if (Cfg.graphics) {
             JobshopDrawer JD;
-            for ( auto &D: TotalData ) {
+            for (auto &D: TotalData) {
                 JD.drawToFile(D, Cfg.output_dir, ".png");
             }
         }
 
         if (Cfg.schedules) {
-            for ( auto &D: TotalData ) {
+            for (auto &D: TotalData) {
                 auto ofs_sch = nnutils::openFileWithDirs<ofstream>(Cfg.output_dir + "/schedule_" + D.name + ".csv");
-                D.printSolution(ofs_sch );
-
+                D.printSolution(ofs_sch);
             }
-
         }
     }
-
-
-
-
-
 }

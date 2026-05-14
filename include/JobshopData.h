@@ -103,6 +103,8 @@ namespace jobshop {
         vector<JType> Jobs;
         vector<vector<int>> OMtime; //< [Operation][Machine] -> processing time; 0 means operation cannot be processed on a given machine
 
+        vector<vector<vector<int>>> setupTimes; // [Machine][Previous Operation][Next Op
+
         SolutionType Solution;
 
         JobshopData() {

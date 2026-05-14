@@ -23,7 +23,7 @@ namespace jobshop {
         string path;
     };
 
-    inline void to_json(nlohmann::json& j, const  Instance& I) {
+    inline void to_json(nlohmann::json &j, const Instance &I) {
         j = nlohmann::json{};
         j.emplace("name", I.name);
         j.emplace("jobs", I.jobs);
@@ -45,13 +45,12 @@ namespace jobshop {
         int numJ;
         int numM;
         int numO;
-        vector<vector<vector<pair<int, int>>>>  Jobs;
-   };
+        vector<vector<vector<pair<int, int> > > > Jobs;
+    };
 
 
     using json = nlohmann::json;
     using namespace std;
-
 
 
     inline void from_json(const nlohmann::json &j, Instance2 &I) {
@@ -63,7 +62,7 @@ namespace jobshop {
     }
 
 
-    Instance2 createInstance2(const JobshopData &DIO ) {
+    Instance2 createInstance2(const JobshopData &DIO) {
         Instance2 I;
         I.name = DIO.name;
         I.numJ = DIO.numJ;
@@ -71,16 +70,13 @@ namespace jobshop {
         I.numO = DIO.numO;
         I.Jobs.clear();
 
-        for ( int j=0; j<DIO.Jobs.size(); j++ ) {
+        for (int j = 0; j < DIO.Jobs.size(); j++) {
+            I.Jobs.push_back(vector<vector<pair<int, int> > >{});
 
-            I.Jobs.push_back(vector<vector<pair<int, int>>>{});
+            for (auto o: DIO.Jobs[j].Ops) {
+                I.Jobs.back().push_back(vector<pair<int, int> >{});
 
-            for ( auto o: DIO.Jobs[j].Ops ) {
-
-                I.Jobs.back().push_back(vector<pair<int, int>>{});
-
-                for ( int m = 0; m < DIO.OMtime[o].size(); m++ ) {
-
+                for (int m = 0; m < DIO.OMtime[o].size(); m++) {
                     if (DIO.OMtime[o][m] > 0) {
                         I.Jobs.back().back().push_back(pair<int, int>{DIO.OMtime[o][m], m});
                     }
@@ -104,13 +100,13 @@ namespace jobshop {
         ofs << "\"numO\": " << I.numO << "," << endl;
 
         ofs << "\"Jobs\": [" << endl;
-        for ( int j = 0; j < I.Jobs.size(); j++ ) {
+        for (int j = 0; j < I.Jobs.size(); j++) {
             ofs << "[" << endl;
             auto &J = I.Jobs[j];
-            for ( int t = 0; t < J.size(); t++ ) {
+            for (int t = 0; t < J.size(); t++) {
                 auto &T = J[t];
                 ofs << "[";
-                for ( int p = 0; p < T.size(); p++ ) {
+                for (int p = 0; p < T.size(); p++) {
                     auto &P = T[p];
                     ofs << "[" << P.first << "," << P.second << "]";
 
@@ -136,32 +132,25 @@ namespace jobshop {
         ofs << "]";
 
         ofs << "}";
-
     }
 
 
-
-
-
-    void dataExport2( const vector<JobshopData>& DIOs, string dir, string instancesFile ) {
-
+    void dataExport2(const vector<JobshopData> &DIOs, string dir, string instancesFile) {
         vector<Instance2> Instances;
 
-        for ( auto &DIO: DIOs ) {
-
+        for (auto &DIO: DIOs) {
             Instances.push_back(createInstance2(DIO));
-
         }
 
         {
             string fn = dir + "/" + instancesFile;
             ofstream ofs(fn);
             if (!ofs.is_open()) {
-                INTERNAL(string("Error opening output file ") + fn );
+                INTERNAL(string("Error opening output file ") + fn);
             };
 
             ofs << "[" << endl;
-            for ( int i = 0; i < Instances.size(); i++ ) {
+            for (int i = 0; i < Instances.size(); i++) {
                 printInstance2(ofs, Instances[i], 0);
                 if (i < Instances.size() - 1) {
                     ofs << "," << endl;
@@ -174,27 +163,21 @@ namespace jobshop {
     }
 
 
+    ////////////////// OLD //////////////////////////////////////////////
 
 
-
-////////////////// OLD //////////////////////////////////////////////
-
-
-
-
-    static void dataExport( const JobshopData& DIO, const Instance &I ) {
-
+    static void dataExport(const JobshopData &DIO, const Instance &I) {
         ofstream ofs(I.path);
 
         if (!ofs.is_open()) {
-            INTERNAL(string("Error opening output file ") + DIO.name );
+            INTERNAL(string("Error opening output file ") + DIO.name);
         };
 
         ofs << DIO.numJ << " " << DIO.numM << endl;
 
-        for ( auto &J: DIO.Jobs) {
-            for ( auto o: J.Ops) {
-                for ( int m = 0; m < DIO.numM; m++ ) {
+        for (auto &J: DIO.Jobs) {
+            for (auto o: J.Ops) {
+                for (int m = 0; m < DIO.numM; m++) {
                     if (DIO.OMtime[o][m] > 0) {
                         ofs << m << " " << DIO.OMtime[o][m] << " ";
                     }
@@ -205,12 +188,10 @@ namespace jobshop {
     }
 
 
-
-    void dataExport( const vector<JobshopData>& DIOs, string dir, string instancesFile ) {
-
+    void dataExport(const vector<JobshopData> &DIOs, string dir, string instancesFile) {
         vector<Instance> Instances;
 
-        for ( auto &DIO: DIOs ) {
+        for (auto &DIO: DIOs) {
             Instance I;
             I.name = DIO.name;
             I.jobs = DIO.numJ;
@@ -225,7 +206,7 @@ namespace jobshop {
         {
             ofstream ofs(dir + "/" + instancesFile);
             if (!ofs.is_open()) {
-                INTERNAL(string("Error opening output file ") + instancesFile );
+                INTERNAL(string("Error opening output file ") + instancesFile);
             };
             json json_data = Instances;
             ofs << json_data.dump(4); // Pretty print with 4 spaces indentation
@@ -279,52 +260,64 @@ namespace jobshop {
     //     }
     // }
 
-    void dataExport_fjs( const vector<JobshopData>& DIOs, string dir, string fjsFileName ) {
-
+    void dataExport_fjs(const vector<JobshopData> &DIOs, string dir, string fjsFileName) {
         int idx = 0;
-        for ( auto &DIO: DIOs ) {
-
-            auto ofs = nnutils::openFileWithDirs<ofstream>(dir + "/" + fjsFileName + (fjsFileName=="" ? "" : "_" ) + nnutils::to_string(idx++, 6) + ".fjs");
+        for (auto &DIO: DIOs) {
+            auto ofs = nnutils::openFileWithDirs<ofstream>(
+                dir + "/" + fjsFileName + (fjsFileName == "" ? "" : "_") + nnutils::to_string(idx++, 6) + ".fjs");
 
             // computing average number of machines used by each operation
-            vector<vector<pair<int,int>>> operationMachines(DIO.OMtime.size()); // list of machines eligible for each operation pair<machine, duration>
+            vector<vector<pair<int, int> > > operationMachines(DIO.OMtime.size());
+            // list of machines eligible for each operation pair<machine, duration>
 
-            for ( int o = 0; o < DIO.OMtime.size(); o++ ) {
-                for ( int m = 0; m < DIO.OMtime[o].size(); m++ ) {
+            for (int o = 0; o < DIO.OMtime.size(); o++) {
+                for (int m = 0; m < DIO.OMtime[o].size(); m++) {
                     int dur = DIO.OMtime[o][m];
                     if (dur > 0) {
-                        operationMachines[o].push_back(make_pair(m+1, dur));
+                        operationMachines[o].push_back(make_pair(m + 1, dur));
                     }
                 }
             }
 
             int sum = 0, num = 0;
-            for ( auto &J: DIO.Jobs ) {
-                for ( auto &o: J.Ops ) {
+            for (auto &J: DIO.Jobs) {
+                for (auto &o: J.Ops) {
                     sum += operationMachines[o].size();
                     num += 1;
                 }
             }
 
-            float avgNumMO = (float)sum / num;
+            float avgNumMO = (float) sum / num;
 
             ofs << DIO.numJ << " " << DIO.numM << " " << avgNumMO << endl;
 
-            for ( auto &J: DIO.Jobs ) {
+            for (auto &J: DIO.Jobs) {
                 ofs << J.Ops.size();
-                for ( auto &o: J.Ops ) {
+                for (auto &o: J.Ops) {
                     ofs << " " << operationMachines[o].size();
-                    for ( auto &MD: operationMachines[o] ) {
+                    for (auto &MD: operationMachines[o]) {
                         ofs << " " << MD.first << " " << MD.second;
                     }
                 }
                 ofs << endl;
             }
-            ofs << flush;
 
+            INFO("EXPORT " << DIO.setupTimes.size() <<  " | " << DIO.setupTimes[0].size() << " | " << DIO.setupTimes[0][0].size() << " M " << DIO.numM << " O " << DIO.numO);
+
+            if (!DIO.setupTimes.empty() && DIO.setupTimes.size() == DIO.numM) {
+                ofs << "SDST\n";
+                for (int m = 0; m < DIO.numM; ++m) {
+                    ofs << "Machine " << m << "\n";
+                    for (int i = 0; i < DIO.numO; ++i) {
+                        for (int j = 0; j < DIO.numO; ++j) {
+                            ofs << DIO.setupTimes[m][i][j] << "\t";
+                        }
+                        ofs << "\n";
+                    }
+                }
+            }
+
+            ofs << flush;
         }
     }
-
-
-
 }
