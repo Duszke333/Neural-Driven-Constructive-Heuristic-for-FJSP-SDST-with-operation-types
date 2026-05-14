@@ -22,71 +22,68 @@
 #include <regex>
 
 
-
-
-
 /**
  * Biblioteka na podstawie pliku konfiguracyjnego i parametrow linii polecen
  * tworzy mape typu
- * 
+ *
  * typedef map<string, map<string, string>> ConfigMap;
  *
  * Mapa ma podwójny klucz: [sekcja][klucz] = wartosc
- * 
+ *
  * 'sekcja' moze być stringiem pustym.
- * 
+ *
  * Mapa przechwuje wszystkie wczytane klucze w postaci string, dopiero przy odczycie
  * są one konwertowane do postaci docelowej
- * 
+ *
  * Plik konfiguracyjny jest typu .ini
  * zawiera linie z nazwą sekcj:
- * 
+ *
  * [nazwa sekcji]
- * 
+ *
  * oraz klucz wartość
- * 
+ *
  * klucz=wartosc
- * 
+ *
  * Moze wystapic klucz=wartosc przed nazwa sekcji, wtedy sekcja klucza jest stringiem pustym.
- * 
+ *
  * Wartosc moze byc liczbą lub stringiem, a nawet stringiem oznaczajacym enum
  * Wartosc moze byc jednowymiarowym wektorem rozdzielonym spacjami, w jednej linii
- * 
+ *
  * Komentarze sa od srednika ; do konca linii
- * 
+ *
  * W linii poleceń występują wyłącznie argumenty w jednej z postaci:
  * --sekcja.klucz=wartosc
  * --klucz=wartosc
- * 
+ *
  * W drugim przypadku sekcja jest stringiem pustym
  * Wartość również może być wektorem rozdzielonym spacjami
  * *******************************************************
  * Odczyt parametrow z mapy obywa sie za pomoca funkcji
- * 
- * read 
+ *
+ * read
  * get
- * 
- * oraz makr ułatwiających odczyt. Makra umożliwiają nie podawanie nazwy sekcji. 
- * W takim przypadku nazwa sekcji jest podana w zmiennej section_name w tej samej 
+ *
+ * oraz makr ułatwiających odczyt. Makra umożliwiają nie podawanie nazwy sekcji.
+ * W takim przypadku nazwa sekcji jest podana w zmiennej section_name w tej samej
  * przestrzeni, w której jest wolane makro.
- * 
+ *
  * READ -- odczyt bez wartosci domyslnej
  * READD -- odczyt z wartoscia domyslna w sytuacji braku klucza
  * GET
  * GETD
- * 
+ *
  * READ(var)             - var - zmienna, parametr ma taką samą nazwę jak zmienna
    READD(var, def)       - def - dodatkowa wartość domyślna
    GET(typ, kn)           - typ, kn - string będący szukanym kluczem,
    GETD(typ, kn, def)     - def - dodatkowa wartosc domyslna
- * 
- * 
+ *
+ *
  * Klasa Enum jest pomocnicza i ulatwia budowanie obiektów typu wyliczanego
  * które się ładnie deserializują ze stringów. Poniżej przykład takiej klasy.
- * Obiekty wyliczane dla tego przykładu należy definiować np. tak: 
+ * Obiekty wyliczane dla tego przykładu należy definiować np. tak:
  * PsiStrategy ps;
- * 
- * 
+ *
+ *
  struct _PsiStrategy {
 
     enum enum_type {
@@ -98,11 +95,9 @@
     }
 };
 typedef Enum<_PsiStrategy> PsiStrategy;
- * 
- * 
+ *
+ *
  */
-
-
 
 
 namespace ReadConfig {
@@ -116,9 +111,7 @@ namespace ReadConfig {
     };
 
     struct ConfigMap {
-
         int analyseCommandLine(int argc, const char **argv) {
-
             cmatch sm;
 
             // polaczenie linii polecen w jeden string
@@ -135,7 +128,7 @@ namespace ReadConfig {
             // analiza wyniku
             regex sec_key_value(R"rgx(\s*(([^\s=\.]*)\.)*([^\s=]*)\s*=\s*([^\r\n;]+?)\s*(;.*)?[$\r\n]*)rgx");
 
-            for (auto &line : lines) {
+            for (auto &line: lines) {
                 if (line.empty()) continue;
                 bool err = false;
                 if (regex_match(line.c_str(), sm, sec_key_value)) {
@@ -151,7 +144,6 @@ namespace ReadConfig {
                     string msg = string("Unrecognized command line option: '") + line + "'";
                     cerr << msg << endl;
                     throw ConfigErr(msg);
-
                 }
             }
 
@@ -159,7 +151,6 @@ namespace ReadConfig {
         }
 
         inline void analyseConfigFile(string config_file) {
-
             cmatch sm;
 
             if (!config_file.empty()) {
@@ -172,7 +163,7 @@ namespace ReadConfig {
                 regex key_value(R"rgx(\s*([^\s=]+)\s*=\s*([^\r\n;#]+?)\s*([;#].*)?[$\r\n]*)rgx");
 
                 regex empty_line(R"rgx(\s*([;#].*)?[$\r\n]*)rgx");
-                
+
                 int ln = 1;
                 while (getline(ifs, line)) {
                     bool err = false;
@@ -197,16 +188,13 @@ namespace ReadConfig {
                         string msg = string("Config file error, line ") + to_string(ln) + ": '" + line + "'";
                         cerr << msg << endl;
                         throw ConfigErr(msg);
-
                     }
                     ln += 1;
-
                 }
             }
-
         }
-    private:
 
+    private:
         inline string find_val(string sec, string key) const {
             string s;
             auto it = cm.find(sec);
@@ -225,7 +213,6 @@ namespace ReadConfig {
 
         template<class T>
         T get(const string &sec, const string &key, type<T>, int n = -1) const {
-
             string s = find_val(sec, key);
 
             if (s.empty()) {
@@ -237,7 +224,7 @@ namespace ReadConfig {
         }
 
         template<class T>
-        vector<T> get(const string &sec, const string &key, type<vector<T>>, int n = -1) const {
+        vector<T> get(const string &sec, const string &key, type<vector<T> >, int n = -1) const {
             string s = find_val(sec, key);
 
             if (s.empty()) {
@@ -248,10 +235,10 @@ namespace ReadConfig {
 
             return decodeVector<T>(sec, key, s, type<T>{}, n);
         }
-    public:
 
+    public:
         template<class T>
-        T get(const string &sec, const string &key ) const {
+        T get(const string &sec, const string &key) const {
             return get(sec, key, type<T>{});
         }
 
@@ -266,7 +253,7 @@ namespace ReadConfig {
         }
 
         template<class T>
-        vector<T> get(const string &sec, const string &key, const vector<T> &def, int n = -1) const  {
+        vector<T> get(const string &sec, const string &key, const vector<T> &def, int n = -1) const {
             string s = find_val(sec, key);
             if (s.empty()) {
                 return def;
@@ -285,9 +272,7 @@ namespace ReadConfig {
             val = get<T>(sec, key, def);
         }
 
-
     private:
-
         template<class T>
         static vector<T> decodeVector(const string &sec, const string &key, const string &s, type<T>, int n = -1) {
             vector<T> vec;
@@ -309,7 +294,8 @@ namespace ReadConfig {
             return vec;
         }
 
-        static vector<bool> decodeVector(const string &sec, const string &key, const string &s, type<bool>, int n = -1)   {
+        static vector<bool> decodeVector(const string &sec, const string &key, const string &s, type<bool>,
+                                         int n = -1) {
             vector<bool> vec;
             std::istringstream ss(s);
             string d;
@@ -338,38 +324,34 @@ namespace ReadConfig {
         }
 
         template<class T>
-        static vector<T> decodeVector(const string &sec, const string &key, const string &s)  {
+        static vector<T> decodeVector(const string &sec, const string &key, const string &s) {
             return decodeVector(sec, key, s, type<T>{});
         }
 
-        static inline vector<std::string> split(const std::string str, const std::string regex_str)  {
+        static inline vector<std::string> split(const std::string str, const std::string regex_str) {
             std::regex regexz(regex_str);
-            std::vector<std::string> list(std::sregex_token_iterator(str.begin(), str.end(), regexz, -1), std::sregex_token_iterator());
+            std::vector<std::string> list(std::sregex_token_iterator(str.begin(), str.end(), regexz, -1),
+                                          std::sregex_token_iterator());
             return list;
         }
 
-        map<string, map<string, string>> cm;
-
-
-
-
+        map<string, map<string, string> > cm;
     };
 
 
     template<class E, class = std::enable_if_t<std::is_enum<E>
-    {
-    }
+        {
+        }
 
-    >>
-    inline static std::istream& operator>>(std::istream& in, E &e) {
-
+    > >
+    inline static std::istream &operator>>(std::istream &in, E &e) {
         std::string token;
         in >> token;
         int i;
         vector<string> nam = enum_names(e);
         for (i = 0; i < nam.size(); i++) {
             if (nam[i] == token) {
-                e = static_cast<E> (i);
+                e = static_cast<E>(i);
                 break;
             }
         }
@@ -393,7 +375,6 @@ namespace ReadConfig {
 #define GETN(typ, kn, n)                    get<typ>(section_name, kn, n);
 #define GETD(typ, kn, def)               get<typ>(section_name, kn, def);
 #define GETDN(typ, kn, def, n)              get<typ>(section_name, kn, def, n);
-
 };
 
 

@@ -42,9 +42,11 @@ namespace nnutils {
     }
 
     // Function template to handle file opening with directory creation
-    template <typename FileStream>
-    FileStream openFileWithDirs(const std::string& filePath,
-                          std::ios_base::openmode mode = (std::is_same_v<FileStream, std::ofstream> ?  FileStream::out : FileStream::in ) ) {
+    template<typename FileStream>
+    FileStream openFileWithDirs(const std::string &filePath,
+                                std::ios_base::openmode mode = (std::is_same_v<FileStream, std::ofstream>
+                                                                    ? FileStream::out
+                                                                    : FileStream::in)) {
         namespace fs = std::filesystem;
 
 
@@ -67,18 +69,18 @@ namespace nnutils {
                 std::error_code ec;
                 ec.assign(errno, std::system_category());
                 std::cerr << "Error: " << ec.message() << " (code " << ec.value() << ")\n";
-                INTERNAL(string("Failed to open file: ") + filePath.c_str() + " (" + ec.message() + ", " + std::to_string(ec.value()) + ")");
+                INTERNAL(
+                    string("Failed to open file: ") + filePath.c_str() + " (" + ec.message() + ", " + std::to_string(
+                        ec.value()) + ")");
             }
 
             return fileStream;
-
-        } catch (const std::exception& e) {
+        } catch (const std::exception &e) {
             INTERNAL("Exception occurred: " + e.what());
         }
 
         return FileStream();
     }
-
 
 
     // // Helper function to combine hash values
@@ -95,11 +97,12 @@ namespace nnutils {
     //     return seed;
     // }
 
-    inline float scale1( float minVal, float maxVal, float val ) {
-        return ((val-minVal)/(maxVal-minVal));
+    inline float scale1(float minVal, float maxVal, float val) {
+        return ((val - minVal) / (maxVal - minVal));
     }
-    inline float scale2( float minVal, float maxVal, float val ) {
-        return -1.0f + ((val-minVal)/(maxVal-minVal))*2;
+
+    inline float scale2(float minVal, float maxVal, float val) {
+        return -1.0f + ((val - minVal) / (maxVal - minVal)) * 2;
     }
 
 
@@ -126,17 +129,16 @@ namespace nnutils {
         static const float shift = 3.5f;
         static const float rshift = 1.0f / 3.5f;
         if (x >= 0.f) {
-            if (x >= shift) return 1.0f + (x-shift)*0.01;
+            if (x >= shift) return 1.0f + (x - shift) * 0.01;
             float tmp = (x - shift) * rshift;
             return 1.0f - tmp * tmp * tmp * tmp;
         } else if (x >= -shift) {
             float tmp = (x + shift) * rshift;
             return -1.0f + tmp * tmp * tmp * tmp;
         } else {
-            return -1.0f - (shift - x)*0.01;
+            return -1.0f - (shift - x) * 0.01;
         }
     }
-
 
 
     inline float scaleTanh3(float x) {
@@ -192,9 +194,9 @@ namespace nnutils {
     }
 
 
-    inline float scaleGauss( float x ) {
+    inline float scaleGauss(float x) {
         float th = scaleTanh(x);
-        return 1.f-th*th;
+        return 1.f - th * th;
     }
 
     inline void unquote(string &str) {
@@ -208,14 +210,12 @@ namespace nnutils {
                 }
             }
         }
-
     }
 
     void importCSV(string fn, vector<vector<string> > &Table);
 
 
-    inline std::string to_string(int n, int width)
-    {
+    inline std::string to_string(int n, int width) {
         std::ostringstream oss;
         oss.width(width);
         oss.fill('0');
@@ -223,9 +223,8 @@ namespace nnutils {
         return oss.str();
     }
 
-    template <typename T>
-    std::string to_string_with_precision(const T a_value, const int n = 6)
-    {
+    template<typename T>
+    std::string to_string_with_precision(const T a_value, const int n = 6) {
         std::ostringstream out;
         out.precision(n);
         out << std::fixed << a_value;
@@ -233,5 +232,4 @@ namespace nnutils {
     }
 
     float atan2_fast(const float x, const float y);
-
 }

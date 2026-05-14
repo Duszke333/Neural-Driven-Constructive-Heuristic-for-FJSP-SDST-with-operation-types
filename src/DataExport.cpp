@@ -302,7 +302,8 @@ namespace jobshop {
                 ofs << endl;
             }
 
-            INFO("EXPORT " << DIO.setupTimes.size() <<  " | " << DIO.setupTimes[0].size() << " | " << DIO.setupTimes[0][0].size() << " M " << DIO.numM << " O " << DIO.numO);
+            INFO("EXPORT " << DIO.setupTimes.size() << " | " << DIO.setupTimes[0].size() << " | " << DIO.setupTimes[0][0
+            ].size() << " M " << DIO.numM << " O " << DIO.numO);
 
             if (!DIO.setupTimes.empty() && DIO.setupTimes.size() == DIO.numM) {
                 ofs << "SDST\n";

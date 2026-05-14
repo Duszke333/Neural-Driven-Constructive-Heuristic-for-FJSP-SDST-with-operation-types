@@ -4,29 +4,25 @@
 #include "JobshopData.h"
 
 
-
 namespace jobshop {
     using namespace std;
 
 
     class JobshopDrawer {
     public:
-
         vector<sf::Color> Colors;
         sf::Font font;
 
         JobshopDrawer() {
             populateColors();
 
-            if (!font.loadFromFile("fnt/Arimo-VariableFont_wght.ttf"))
-            {
-
+            if (!font.loadFromFile("fnt/Arimo-VariableFont_wght.ttf")) {
             }
         }
 
         void populateColors();
 
-        void drawToFile(const JobshopData &IOD, string dir,  string ext);
+        void drawToFile(const JobshopData &IOD, string dir, string ext);
 
         //
         // void drawToFile(const PalOpt::InputOutputData &IOD, string ext) {

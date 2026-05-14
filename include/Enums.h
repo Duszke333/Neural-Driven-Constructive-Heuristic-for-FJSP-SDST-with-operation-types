@@ -34,13 +34,12 @@ using namespace ReadConfig;
  * Oczywiście przy tym podejściu enumy muszą mieć kolejne wertości zaczynając od 0
  */
 namespace ReadConfig {
-
     enum class PsiStrategy {
         noNPI = 0, evenly, greedy, deathRatio, file, greedySpatial
     };
 
-    inline const vector<string>& enum_names(PsiStrategy) {
-        static vector<string> names {"noNPI", "evenly", "greedy", "deathRatio", "file", "greedySpatial"};
+    inline const vector<string> &enum_names(PsiStrategy) {
+        static vector<string> names{"noNPI", "evenly", "greedy", "deathRatio", "file", "greedySpatial"};
         return names;
     }
 
@@ -48,47 +47,46 @@ namespace ReadConfig {
         no = 0, evenly, ageGreedy, file
     };
 
-    inline vector<string>& enum_names(UStrategy) {
-        static vector<string> names {"no", "evenly", "ageGreedy", "file"};
+    inline vector<string> &enum_names(UStrategy) {
+        static vector<string> names{"no", "evenly", "ageGreedy", "file"};
         return names;
     }
 
     enum class CASE {
-        Poland=0, Ohio, Test
+        Poland = 0, Ohio, Test
     };
 
-    inline const vector<string>& enum_names(CASE) {
-       static vector<string> names{"Poland", "Ohio", "Test"};
+    inline const vector<string> &enum_names(CASE) {
+        static vector<string> names{"Poland", "Ohio", "Test"};
         return names;
     }
 
     enum class SpatialLevel {
-        community=0, county, voivodeship, country
+        community = 0, county, voivodeship, country
     };
 
-    inline const vector<string>& enum_names(SpatialLevel) {
-        static vector<string> names {"community", "county", "voivodeship", "country"};
+    inline const vector<string> &enum_names(SpatialLevel) {
+        static vector<string> names{"community", "county", "voivodeship", "country"};
         return names;
     }
 
     enum class InitialCasesState {
-        evenly=0, proportionalSpatial, proportional, proportionalSpatialAge
+        evenly = 0, proportionalSpatial, proportional, proportionalSpatialAge
     };
 
-   inline const vector<string>& enum_names(InitialCasesState) {
-       static vector<string> names {"evenly", "proportionalSpatial", "proportional", "proportionalSpatialAge"};
+    inline const vector<string> &enum_names(InitialCasesState) {
+        static vector<string> names{"evenly", "proportionalSpatial", "proportional", "proportionalSpatialAge"};
         return names;
     }
 
     enum class DecAggregation {
-        decWeeks=0, decWeeksGroups, decWeeksCounties, decWeeksCountiesGroups
+        decWeeks = 0, decWeeksGroups, decWeeksCounties, decWeeksCountiesGroups
     };
 
-    inline const vector<string>& enum_names(DecAggregation) {
-        static vector<string> names {"decWeeks", "decWeeksGroups", "decWeeksCounties", "decWeeksCountiesGroups"};
+    inline const vector<string> &enum_names(DecAggregation) {
+        static vector<string> names{"decWeeks", "decWeeksGroups", "decWeeksCounties", "decWeeksCountiesGroups"};
         return names;
     }
-
 }
 
 //struct Params {
@@ -192,7 +190,6 @@ namespace ReadConfig {
 //    string controlFilename;
 //    string statsFilename;
 //    bool autoGenPrefixToFilenames; //automatycznie dodaje prefixy do nazwy plikow odzwierciedlajace najwazniejsze parametry
-
 
 
 //        // [SPREAD_MODEL]

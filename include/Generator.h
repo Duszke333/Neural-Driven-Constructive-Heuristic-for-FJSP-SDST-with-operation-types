@@ -20,24 +20,20 @@ namespace jobshop {
     //using namespace __gnu_debug;
 
 
-
-
     struct GeneratorRnd {
-
         struct GenConfigType {
-
             friend class boost::serialization::access;
             string nameBase;
-//            int num;
+            //            int num;
             int seedCommon;
             int seed;
             int numM;
             int numO;
             bool multiOperation; //< are multiple tasks in the same job permited
-            pair<int, int> RangeOM;   //< how many machines for single operation
-            pair<int, int> RangeJ;    //< how many jobs
-            pair<int, int> RangeJO;   //< how many operations is a single job
-            pair<int, int> RangeD;    //< task duration range
+            pair<int, int> RangeOM; //< how many machines for single operation
+            pair<int, int> RangeJ; //< how many jobs
+            pair<int, int> RangeJO; //< how many operations is a single job
+            pair<int, int> RangeD; //< task duration range
 
 
             // string to_string( string phase ) const {
@@ -45,7 +41,7 @@ namespace jobshop {
             // }
 
             template<class Archive>
-            void serialize(Archive & ar, const unsigned int version) {
+            void serialize(Archive &ar, const unsigned int version) {
                 ar & nameBase;
                 // ar & num;
                 ar & seedCommon;
@@ -58,7 +54,6 @@ namespace jobshop {
                 ar & RangeJO;
                 ar & RangeD;
             }
-
         };
 
 
@@ -70,8 +65,7 @@ namespace jobshop {
         // : seed(_seed), filename( _filename ), numTotal( _numTotal ), numValidation(_numValidation), numM( _numM ), numO( _numO ), multiOps(_multiOps), RangeOM(_RangeOM), RangeJ( _RangeJ ), RangeT( _RangeT ), RangeJO(_RangeJO) {
         // }
 
-        GeneratorRnd( const GenConfigType &_Conf  ) : GConf(_Conf) {
-
+        GeneratorRnd(const GenConfigType &_Conf) : GConf(_Conf) {
         }
 
         // GenConfigType& GenConfig() {
@@ -91,8 +85,7 @@ namespace jobshop {
     };
 
 
-
-    inline void to_json(nlohmann::json& j, const GeneratorRnd::GenConfigType& p) {
+    inline void to_json(nlohmann::json &j, const GeneratorRnd::GenConfigType &p) {
         j = nlohmann::json{};
         j.emplace("nameBase", p.nameBase);
         // j.emplace("num", p.num);
@@ -107,7 +100,7 @@ namespace jobshop {
         j.emplace("RangeD", p.RangeD);
     }
 
-    inline void from_json(const nlohmann::json& j, GeneratorRnd::GenConfigType& p) {
+    inline void from_json(const nlohmann::json &j, GeneratorRnd::GenConfigType &p) {
         j.at("nameBase").get_to(p.nameBase);
         // j.at("num").get_to(p.num);
         j.at("seedCommon").get_to(p.seedCommon);
@@ -122,14 +115,8 @@ namespace jobshop {
     }
 
 
-
-
-
-
-
     struct GeneratorTxt {
         struct GenConfigType {
-
             friend class boost::serialization::access;
             string txtFileName;
             // int num;
@@ -137,8 +124,7 @@ namespace jobshop {
             int numO;
             int seed;
             bool multiTask; //< are multiple tasks in the same job permited
-            pair<float, float> RangeJ;    //< how many jobs, as fraction of the jobs number in txt file
-
+            pair<float, float> RangeJ; //< how many jobs, as fraction of the jobs number in txt file
 
 
             // string to_string( string phase ) const {
@@ -146,7 +132,7 @@ namespace jobshop {
             // }
 
             template<class Archive>
-            void serialize(Archive & ar, const unsigned int version) {
+            void serialize(Archive &ar, const unsigned int version) {
                 ar & txtFileName;
                 // ar & num;
                 ar & numM;
@@ -156,23 +142,21 @@ namespace jobshop {
                 ar & RangeJ;
                 // ar & RangeJO;
             }
-
         };
 
         GenConfigType GConf;
 
-       // int num;
+        // int num;
 
         JobshopData CommonIOD;
-        pair<int, int> RangeJO;   //< how many operations is a single job
-
+        pair<int, int> RangeJO; //< how many operations is a single job
 
 
         // DataLoaderJobshop( int _seed, string _filename, int _numM, int _numO, bool _multiOps, pair<int, int> _RangeOM, pair<int, int> _RangeJ, pair<int, int> _RangeJO, pair<int, int> _RangeT, int _numTotal, int _numValidation  )
         // : seed(_seed), filename( _filename ), numTotal( _numTotal ), numValidation(_numValidation), numM( _numM ), numO( _numO ), multiOps(_multiOps), RangeOM(_RangeOM), RangeJ( _RangeJ ), RangeT( _RangeT ), RangeJO(_RangeJO) {
         // }
 
-        GeneratorTxt( const GenConfigType &_Conf  ) : GConf(_Conf) {
+        GeneratorTxt(const GenConfigType &_Conf) : GConf(_Conf) {
             readTxtFile();
         }
 
@@ -195,7 +179,7 @@ namespace jobshop {
         //     return *this;
         // }
 
-        const JobshopData& getCommonDIO() {
+        const JobshopData &getCommonDIO() {
             return CommonIOD;
         }
 
@@ -213,7 +197,7 @@ namespace jobshop {
         // }
     };
 
-    inline void to_json(nlohmann::json& j, const GeneratorTxt::GenConfigType& p) {
+    inline void to_json(nlohmann::json &j, const GeneratorTxt::GenConfigType &p) {
         j = nlohmann::json{};
         j.emplace("nameBase", p.txtFileName);
         // j.emplace("num", p.num);
@@ -225,7 +209,7 @@ namespace jobshop {
         // j.emplace("RangeJO", p.RangeJO);
     }
 
-    inline void from_json(const nlohmann::json& j, GeneratorTxt::GenConfigType& p) {
+    inline void from_json(const nlohmann::json &j, GeneratorTxt::GenConfigType &p) {
         j.at("nameBase").get_to(p.txtFileName);
         // j.at("num").get_to(p.num);
         j.at("numM").get_to(p.numM);
@@ -235,9 +219,5 @@ namespace jobshop {
         j.at("RangeJ").get_to(p.RangeJ);
         // j.at("RangeJO").get_to(p.RangeJO);
     }
-
-
-
-
 }
 

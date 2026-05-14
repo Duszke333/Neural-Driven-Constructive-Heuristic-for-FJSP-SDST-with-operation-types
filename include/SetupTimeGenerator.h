@@ -5,7 +5,6 @@
 #include <random>
 
 namespace jobshop {
-
     struct SetupConfig {
         int variant;
         double eta;
@@ -24,23 +23,22 @@ namespace jobshop {
         /**
          * Generates the Setup Times Matrix: [machine][op-from][op-to]
          */
-        virtual std::vector<std::vector<std::vector<int>>> generate(
-            const std::vector<std::vector<int>>& OMtime,
+        virtual std::vector<std::vector<std::vector<int> > > generate(
+            const std::vector<std::vector<int> > &OMtime,
             int numM,
             int numO,
-            const SetupConfig& config,
-            std::mt19937& gen) = 0;
+            const SetupConfig &config,
+            std::mt19937 &gen) = 0;
 
     protected:
         /**
          * Applies Floyd-Warshall algorithm to enforce triangle inequality
          */
-        static void enforceTriangleInequality(std::vector<std::vector<int>>& setupTimes, int numO);
+        static void enforceTriangleInequality(std::vector<std::vector<int> > &setupTimes, int numO);
     };
 
     /**
      * Factory that creates the generator based on variant
      */
     std::unique_ptr<SetupTimeGenerator> createSetupTimeGenerator(int variant);
-
 } // namespace jobshop

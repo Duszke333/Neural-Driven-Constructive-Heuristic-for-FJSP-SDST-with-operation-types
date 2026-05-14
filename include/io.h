@@ -7,11 +7,13 @@
 namespace jobshop {
     using namespace std;
 
-    typedef map<vector<pair<int, int>>, int> TOperationsTypesMap;
+    typedef map<vector<pair<int, int> >, int> TOperationsTypesMap;
 
-    void train( Config Cfg );
-    void test( Config Cfg );
-    void generateRandom( Config Cfg );
-    void generateBrandimarte( Config Cfg );
+    void train(Config Cfg);
 
+    void test(Config Cfg);
+
+    void generateRandom(Config Cfg);
+
+    void generateBrandimarte(Config Cfg);
 }

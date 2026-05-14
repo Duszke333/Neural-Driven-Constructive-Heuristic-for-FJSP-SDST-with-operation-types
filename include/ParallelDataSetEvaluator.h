@@ -20,47 +20,43 @@ namespace chof {
     template<ConstructionHeuristicConcept CHType>
     struct ParallelDataSetEvaluator {
     private:
-        vector<typename CHType::DataType*> *Datas;
+        vector<typename CHType::DataType *> *Datas;
         vector<CHType> CHS;
         vector<double> Sums;
 
     public:
-        ParallelDataSetEvaluator(vector<typename CHType::DataType*> &_Datas, const CHType &_CH, int numThreads )
-        : Datas(&_Datas), CHS(numThreads, _CH), Sums(numThreads, 0.0)
-        {
+        ParallelDataSetEvaluator(vector<typename CHType::DataType *> &_Datas, const CHType &_CH, int numThreads)
+            : Datas(&_Datas), CHS(numThreads, _CH), Sums(numThreads, 0.0) {
             if (numThreads <= 0) INTERNAL("numThreads must be > 0");
         }
 
-        void solve(const double* psi, const int& n, int t, int beg, int num) {
-
+        void solve(const double *psi, const int &n, int t, int beg, int num) {
             CHS[t].setParams(psi, n);
 
             Sums[t] = 0.0;
 
-            for (int i = beg; i < beg+num; i++ ) {
-
+            for (int i = beg; i < beg + num; i++) {
                 if (i >= Datas->size()) INTERNAL("Problem with parallelization");
 
                 auto &Data = (*Datas)[i];
 
-                Sums[t] += CHS[t].run( *Data ).getObj();
+                Sums[t] += CHS[t].run(*Data).getObj();
             }
         }
 
-        double operator()(const double* psi, int n) {
-
+        double operator()(const double *psi, int n) {
             std::vector<std::thread> threads;
 
-            int m = Datas->size();  //< number of tasks
+            int m = Datas->size(); //< number of tasks
 
             int tnum = CHS.size(); //< number of threads
 
-            int tpt = m / tnum;     //< tasks per thread
-            int r = m % tnum;     //< the reminder
+            int tpt = m / tnum; //< tasks per thread
+            int r = m % tnum; //< the reminder
 
             int beg = 0;
 
-            for( int t = 0; t < tnum; t++ ) {
+            for (int t = 0; t < tnum; t++) {
                 int num = tpt;
                 if (t < r) num++;
 
@@ -69,7 +65,7 @@ namespace chof {
                 beg += num;
             }
 
-            for ( auto &t : threads ) {
+            for (auto &t: threads) {
                 t.join();
             }
 
@@ -78,6 +74,5 @@ namespace chof {
 
             return objSum / Datas->size();
         }
-
     };
 }

@@ -6,7 +6,6 @@
 namespace po = boost::program_options;
 
 struct Config {
-
     bool mode_gen_rand = false;
     bool mode_train = false;
     bool mode_test = false;
@@ -62,5 +61,6 @@ struct Config {
 };
 
 
-std::ostream& operator<<(std::ostream& os, const Config& c);
-Config parse_command_line(int argc, char* argv[]);
+std::ostream &operator<<(std::ostream &os, const Config &c);
+
+Config parse_command_line(int argc, char *argv[]);

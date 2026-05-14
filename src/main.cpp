@@ -14,9 +14,7 @@ using namespace std;
 
 #include  <filesystem>
 
-namespace  chof {
-
-
+namespace chof {
 }
 
 
@@ -33,7 +31,7 @@ namespace  chof {
 // Helper class to manage memory and lifetime of argv
 class CmdLineArgs {
 public:
-    explicit CmdLineArgs(const std::string& commandLine) {
+    explicit CmdLineArgs(const std::string &commandLine) {
         std::stringstream ss(commandLine);
         std::string segment;
 
@@ -48,7 +46,7 @@ public:
 
         // 3. Allocate memory for argv (array of pointers)
         // +1 for the terminating nullptr (standard convention)
-        _argv = new char*[_argc + 1];
+        _argv = new char *[_argc + 1];
 
         // 4. Copy strings into mutable char buffers
         for (int i = 0; i < _argc; ++i) {
@@ -70,37 +68,33 @@ public:
 
     // Accessors
     int argc() const { return _argc; }
-    char** argv() const { return _argv; }
+    char **argv() const { return _argv; }
 
 private:
     int _argc;
-    char** _argv;
+    char **_argv;
 };
 
 
-
-
-int main(int argc, char** argv) {
-
-// //    Config Cfg = parse_command_line(argc, argv);
-//
-//    //  std::string cmd = "nd-fjsp-ch --generate=test_gen_dir_01 --machines=10 --operation_types=15 --jobs_min=20 --jobs_max=30 --job_len_min=5 --job_len_max=10 --num_alt_min=1 --num_alt_max=2 --t_min=10 --t_max=100 --set_size=50000";
-//
-//    // std::string cmd = "nd-fjsp-ch --generate=gen_dir --brandimarte=5 --set_size=25";
-//
-//      // std::string cmd = "nd-fjsp-ch --train=test_gen_dir_01 --run_name=train_01 --val_set_size=5000 --max_evals=5000";
-//
-//     // std::string cmd = "nd-fjsp-ch --test=test_dir_05 --run_name=train_01 --graphics --schedules --seed=15 --time_limit=6";
-//
-//
-//      std::string cmd1 = "nd-fjsp-ch --generate --output_dir=test_gen_dir_02 --machines=10 --operation_types=15 --jobs_min=20 --jobs_max=30 --job_len_min=5 --job_len_max=10 --num_alt_min=1 --num_alt_max=2 --t_min=10 --t_max=100 --set_size=50000";
-//     std::string cmd2 = "nd-fjsp-ch --generate --output_dir=test_gen_dir_brand --brandimarte=5 --set_size=55";
-//     // # training
-//     std::string cmd3 = "nd-fjsp-ch --train --output_dir=output_dir_ttt --files_dir=test_gen_dir_02 --val_set_size=10 --max_evals=5000";
-//     // # testing
-//     std::string cmd4 = "nd-fjsp-ch --test --output_dir=ouput_dir_test --files_dir=test_gen_dir_03 --training_output_dir=output_dir_ttt --time_limit=6 --schedules --graphics";
-//
-
+int main(int argc, char **argv) {
+    // //    Config Cfg = parse_command_line(argc, argv);
+    //
+    //    //  std::string cmd = "nd-fjsp-ch --generate=test_gen_dir_01 --machines=10 --operation_types=15 --jobs_min=20 --jobs_max=30 --job_len_min=5 --job_len_max=10 --num_alt_min=1 --num_alt_max=2 --t_min=10 --t_max=100 --set_size=50000";
+    //
+    //    // std::string cmd = "nd-fjsp-ch --generate=gen_dir --brandimarte=5 --set_size=25";
+    //
+    //      // std::string cmd = "nd-fjsp-ch --train=test_gen_dir_01 --run_name=train_01 --val_set_size=5000 --max_evals=5000";
+    //
+    //     // std::string cmd = "nd-fjsp-ch --test=test_dir_05 --run_name=train_01 --graphics --schedules --seed=15 --time_limit=6";
+    //
+    //
+    //      std::string cmd1 = "nd-fjsp-ch --generate --output_dir=test_gen_dir_02 --machines=10 --operation_types=15 --jobs_min=20 --jobs_max=30 --job_len_min=5 --job_len_max=10 --num_alt_min=1 --num_alt_max=2 --t_min=10 --t_max=100 --set_size=50000";
+    //     std::string cmd2 = "nd-fjsp-ch --generate --output_dir=test_gen_dir_brand --brandimarte=5 --set_size=55";
+    //     // # training
+    //     std::string cmd3 = "nd-fjsp-ch --train --output_dir=output_dir_ttt --files_dir=test_gen_dir_02 --val_set_size=10 --max_evals=5000";
+    //     // # testing
+    //     std::string cmd4 = "nd-fjsp-ch --test --output_dir=ouput_dir_test --files_dir=test_gen_dir_03 --training_output_dir=output_dir_ttt --time_limit=6 --schedules --graphics";
+    //
 
 
     // 1. Convert string to argc/argv
@@ -123,10 +117,6 @@ int main(int argc, char** argv) {
     } else if (Cfg.mode_gen_brand) {
         jobshop::generateBrandimarte(Cfg);
     } else {
-        ERROR( "Mode unknown.")
+        ERROR("Mode unknown.")
     }
-
-
-
-
 } // main

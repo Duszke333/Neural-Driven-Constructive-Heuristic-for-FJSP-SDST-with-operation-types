@@ -15,7 +15,6 @@
 #include "ConstructionHeuristicConcept.h"
 
 
-
 namespace chof {
     // using namespace __gnu_debug;
     using namespace std;
@@ -27,7 +26,6 @@ namespace chof {
 
     template<ConstructionHeuristicConcept CHType>
     class ClusteringConstructionHeuristic {
-
         friend class boost::serialization::access;
 
     public:
@@ -42,10 +40,8 @@ namespace chof {
         vector<CHType> CHS;
 
     public:
-
         template<class Archive>
-        void serialize(Archive & ar, const unsigned int version)
-        {
+        void serialize(Archive &ar, const unsigned int version) {
             ar & CHS;
         }
 
@@ -57,60 +53,54 @@ namespace chof {
             return CHS.front().maximize();
         };
 
-        ClusteringConstructionHeuristic() {}
+        ClusteringConstructionHeuristic() {
+        }
 
-        ClusteringConstructionHeuristic( const ConfigType &_Conf ) : Conf(_Conf), CHS(_Conf.num, CHType(_Conf.CHConf))
-        {
+        ClusteringConstructionHeuristic(const ConfigType &_Conf) : Conf(_Conf), CHS(_Conf.num, CHType(_Conf.CHConf)) {
         }
 
 
-        ClusteringConstructionHeuristic( int _M, CHType &CS ) : CHS(_M, CS)
-        {
+        ClusteringConstructionHeuristic(int _M, CHType &CS) : CHS(_M, CS) {
         }
 
         int getParamsSize() const {
             return CHS.size() * CHS.front().getParamsSize();
         }
 
-        void getParams( vector<double> &Params ) const {
-            for (auto &ch : CHS) {
-                ch.getParams( Params );
+        void getParams(vector<double> &Params) const {
+            for (auto &ch: CHS) {
+                ch.getParams(Params);
             }
         }
 
 
-        ClusteringConstructionHeuristic& setParams( const double *params, int n) {
+        ClusteringConstructionHeuristic &setParams(const double *params, int n) {
             int ch_size = CHS.front().getParamsSize();
-            assert( n == ch_size * CHS.size());
-            for (auto &ch : CHS) {
-                ch.setParams( params, ch_size );
+            assert(n == ch_size * CHS.size());
+            for (auto &ch: CHS) {
+                ch.setParams(params, ch_size);
                 params += ch_size;
             }
             return *this;
         }
 
-        DataType::SolutionType run( const DataType& Data ) {
-
+        DataType::SolutionType run(const DataType &Data) {
             typename DataType::SolutionType Sol, SolTmp;
 
-            Sol.setObj( CHS.front().maximize() ? -DBL_MAX : DBL_MAX );
+            Sol.setObj(CHS.front().maximize() ? -DBL_MAX : DBL_MAX);
 
             int c = 0;
 
-            for( auto &CH : CHS ) {
-
+            for (auto &CH: CHS) {
                 SolTmp = CH.run(Data);
 
                 if (CHS.front().maximize() ? SolTmp.getObj() > Sol.getObj() : SolTmp.getObj() < Sol.getObj()) {
-
                     swap(Sol, SolTmp);
                     // Sol = SolTmp;
 
                     if constexpr (ClusteredSolutionConcept<typename DataType::SolutionType>) {
-
-                        Sol.setCluster( c );
+                        Sol.setCluster(c);
                     }
-
                 }
 
                 c++;
@@ -123,7 +113,6 @@ namespace chof {
         CHType &operator[](int c) {
             return CHS[c];
         }
-
     };
 
     // template<typename T>
@@ -138,12 +127,11 @@ namespace chof {
     // }
 
     template<typename T>
-            auto to_json(nlohmann::json& j, const T& c)
-                -> std::enable_if_t<std::is_same_v<T, typename ClusteringConstructionHeuristic<typename T::CHT>::ConfigType>>
-    {
+    auto to_json(nlohmann::json &j, const T &c)
+        -> std::enable_if_t<std::is_same_v<T, typename ClusteringConstructionHeuristic<typename T::CHT>::ConfigType> > {
         j = nlohmann::json{};
         j.emplace("num", c.num);
-        j.emplace("CHConf", c.CHConf );
+        j.emplace("CHConf", c.CHConf);
     }
 
 
@@ -158,11 +146,9 @@ namespace chof {
     // }
 
     template<typename T>
-       auto from_json(nlohmann::json& j, T& c)
-          -> std::enable_if_t<std::is_same_v<T, typename ClusteringConstructionHeuristic<typename T::CHT>::ConfigType>>
-    {
+    auto from_json(nlohmann::json &j, T &c)
+        -> std::enable_if_t<std::is_same_v<T, typename ClusteringConstructionHeuristic<typename T::CHT>::ConfigType> > {
         j.at("num").get_to(c.num);
         j.at("CHConf").get_to(c.CHConf);
     }
-
 }

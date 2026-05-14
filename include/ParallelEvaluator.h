@@ -7,35 +7,33 @@
 #include "BlackBoxEvaluatorConcept.h"
 
 
-
-
 namespace chof {
     using namespace std;
 
     template<BlackBoxEvaluatorConcept BBEType>
-    struct ParallelEvaluator  {
-        vector< BBEType > Pool;
+    struct ParallelEvaluator {
+        vector<BBEType> Pool;
         vector<int> Stack;
         std::mutex fmtx;
-        enum {MAX_THREADS=256};
+
+        enum { MAX_THREADS = 256 };
 
         ParallelEvaluator() {
         }
 
-        ParallelEvaluator(const BBEType& _OptObj)
-        : Pool(MAX_THREADS, _OptObj), Stack(MAX_THREADS) {
-
+        ParallelEvaluator(const BBEType &_OptObj)
+            : Pool(MAX_THREADS, _OptObj), Stack(MAX_THREADS) {
             iota(Stack.begin(), Stack.end(), 0);
         }
 
-        ParallelEvaluator(const ParallelEvaluator<BBEType>& other) :  Pool(other.Pool), Stack(other.Stack) {
+        ParallelEvaluator(const ParallelEvaluator<BBEType> &other) : Pool(other.Pool), Stack(other.Stack) {
         }
 
-        double operator()(const double* psi, const int& n) {
+        double operator()(const double *psi, const int &n) {
             int ObjIdx = -1;
-            while(true)
-            {
-                while(Stack.empty()) {}
+            while (true) {
+                while (Stack.empty()) {
+                }
 
                 lock_guard<std::mutex> lck(fmtx);
                 if (Stack.empty()) {

@@ -24,8 +24,8 @@ namespace jobshop {
     template<typename AFType, typename GenConfType>
     class JobshopConstructionHeuristic {
         friend class boost::serialization::access;
-    public:
 
+    public:
         struct ConfigType {
             friend class boost::serialization::access;
 
@@ -34,20 +34,19 @@ namespace jobshop {
 
             string desc;
             bool noAutoScaleEval = false; //< during evaluation, do not do autoScale nor autoScaleNumOperationsInfo
-                                        //< this parameter is not boost::serialized
+            //< this parameter is not boost::serialized
             bool autoScale;
             bool autoScaleNumOperationsInfo; //< if to auto scale vector numTaskInfo
-            bool nextOperationInfo;  //< if to include the information on next operation
+            bool nextOperationInfo; //< if to include the information on next operation
             bool numOperationsInfo; //< if to include information on the number left of all task types
             bool numAllOperationsInfo; //< if to include information on the number of all tasks left
-            int numM;         //< number of machines
+            int numM; //< number of machines
             int numO;
             typename AFType::ConfigType AConf;
             GenConfType GConf;
 
             template<class Archive>
-            void serialize(Archive & ar, const unsigned int version)
-            {
+            void serialize(Archive &ar, const unsigned int version) {
                 ar & desc;
                 ar & autoScale;
                 ar & autoScaleNumOperationsInfo;
@@ -59,7 +58,6 @@ namespace jobshop {
                 ar & AConf;
                 ar & GConf;
             }
-
         };
 
     public:
@@ -71,7 +69,8 @@ namespace jobshop {
         }
 
         int getParamsSize() const {
-           return AF.getParamsSize() + (Conf.autoScale && !Conf.noAutoScaleEval ? Scale.size() : 0) + (Conf.autoScaleNumOperationsInfo && !Conf.noAutoScaleEval ? ScaleNumOperationsInfo.size() : 0);
+            return AF.getParamsSize() + (Conf.autoScale && !Conf.noAutoScaleEval ? Scale.size() : 0) + (
+                       Conf.autoScaleNumOperationsInfo && !Conf.noAutoScaleEval ? ScaleNumOperationsInfo.size() : 0);
         }
 
         void getParams(vector<double> &Params) const {
@@ -83,7 +82,8 @@ namespace jobshop {
                 Params.insert(Params.end(), ScaleNumOperationsInfo.begin(), ScaleNumOperationsInfo.end());
             }
         }
-        JobshopConstructionHeuristic& setParams( const double *params, int n ) {
+
+        JobshopConstructionHeuristic &setParams(const double *params, int n) {
             int s = AF.getParamsSize();
             AF.setParams(params, s);
             params += s;
@@ -101,6 +101,7 @@ namespace jobshop {
         DataType::SolutionType run(const DataType &Data) {
             return construct(Data);
         }
+
         // end of interface
     public:
         // fields
@@ -113,13 +114,13 @@ namespace jobshop {
         AFType AF;
 
         int numAllTasksLeft;
-        vector<vector<int>> JobsOperationsNumLeft; //< [job][operation] -> number left
-        vector<vector<int>> JobsOperationsLeft; //< [job] -> list of operations, in reverse order
+        vector<vector<int> > JobsOperationsNumLeft; //< [job][operation] -> number left
+        vector<vector<int> > JobsOperationsLeft; //< [job] -> list of operations, in reverse order
         vector<int> NumOperationsLeft; //< [task] -> number of left operations of this type
         vector<int> JobMinTime; //< [job] -> minimum time, when the next operation can start
         vector<int> MachineEndTime; //< [machine] -> schedule end time
-        vector<vector<int>> OperationsMachines; //< [operation] -> list of machines permitted
-        vector<vector<int>> MachinesOperations; //< [machine] -> list of operations permitted
+        vector<vector<int> > OperationsMachines; //< [operation] -> list of machines permitted
+        vector<vector<int> > MachinesOperations; //< [machine] -> list of operations permitted
 
         Matrix<float, Dynamic, 1> View1D; //< [machine] -> diff between x_max and MachineEndTime
 
@@ -130,8 +131,7 @@ namespace jobshop {
 
     public:
         template<class Archive>
-        void serialize(Archive & ar, const unsigned int version)
-        {
+        void serialize(Archive &ar, const unsigned int version) {
             ar & Conf;
             ar & Scale;
             ar & ScaleNumOperationsInfo;
@@ -139,23 +139,19 @@ namespace jobshop {
         }
 
     public:
-
         explicit JobshopConstructionHeuristic() {
-
         }
 
-        explicit JobshopConstructionHeuristic( const ConfigType &_Config)
-            : Conf(_Config), AF( _Config.AConf), Scale(_Config.numM+1, 0.0f), ScaleNumOperationsInfo(_Config.numO, 0.0f) {
-
+        explicit JobshopConstructionHeuristic(const ConfigType &_Config)
+            : Conf(_Config), AF(_Config.AConf), Scale(_Config.numM + 1, 0.0f),
+              ScaleNumOperationsInfo(_Config.numO, 0.0f) {
             int dim = getParamsSize();
             vector<double> Params(dim, 0.0);
-            setParams( Params.data(), dim );
+            setParams(Params.data(), dim);
         }
 
     protected:
-
-        DataType::SolutionType construct( const DataType &IOD ) {
-
+        DataType::SolutionType construct(const DataType &IOD) {
             DataType::SolutionType Solution;
 
             init(IOD);
@@ -163,19 +159,17 @@ namespace jobshop {
             Solution.Decs.clear();
             Solution.Decs.reserve(numAllTasksLeft);
 
-            while(numAllTasksLeft > 0) {
-
+            while (numAllTasksLeft > 0) {
                 float best_v = -FLT_MAX;
                 int best_j = -1;
                 int best_m = -1;
                 int best_o = -1;
-                for ( int j = 0; j < IOD.numJ; j++ ) {
+                for (int j = 0; j < IOD.numJ; j++) {
                     if (JobsOperationsLeft[j].empty()) continue;
 
                     int o = JobsOperationsLeft[j].back(); //< as it is in reverse order
 
-                    for ( int m: OperationsMachines[o]) {
-
+                    for (int m: OperationsMachines[o]) {
                         prepareNNInput(IOD, j, m, o);
 
                         float v = AF(NNInput);
@@ -195,11 +189,13 @@ namespace jobshop {
 
                 updateData(IOD, best_j, best_m, best_o);
 
-                JobshopData::Dec D = {best_m,
+                JobshopData::Dec D = {
+                    best_m,
                     MachineEndTime[best_m] - IOD.OMtime[best_o][best_m],
                     MachineEndTime[best_m],
                     best_j,
-                    (int)(IOD.Jobs[best_j].Ops.size() - (JobsOperationsLeft[best_j].size() + 1))};
+                    (int) (IOD.Jobs[best_j].Ops.size() - (JobsOperationsLeft[best_j].size() + 1))
+                };
                 Solution.Decs.push_back(D);
             }
 
@@ -210,10 +206,9 @@ namespace jobshop {
 
 
         void init(const DataType &IOD) {
-
             Scale.assign(IOD.numM, 0.0f);
 
-          //  Scale = {0.7, 0.3, 0.5, -0.4, 0.18, 0.17, 0.6, 0.18, 0.04, -0.9, 0.24}; //!!!!!!!!!!!!!111
+            //  Scale = {0.7, 0.3, 0.5, -0.4, 0.18, 0.17, 0.6, 0.18, 0.04, -0.9, 0.24}; //!!!!!!!!!!!!!111
 
             ScaleNumOperationsInfo.assign(IOD.numO, 0.0f);
 
@@ -222,15 +217,15 @@ namespace jobshop {
             NumOperationsLeft.assign(IOD.numO, 0);
             JobsOperationsNumLeft.assign(IOD.numJ, vector<int>(IOD.numO, 0));
 
-            for ( auto &J: IOD.Jobs) {
-                for ( auto o: J.Ops ) {
+            for (auto &J: IOD.Jobs) {
+                for (auto o: J.Ops) {
                     JobsOperationsNumLeft[J.idx][o] += 1;
                     NumOperationsLeft[o] += 1;
                     numAllTasksLeft += 1;
                 }
             }
             JobsOperationsLeft.resize(IOD.numJ);
-            for ( auto &J: IOD.Jobs ) {
+            for (auto &J: IOD.Jobs) {
                 JobsOperationsLeft[J.idx] = J.Ops;
                 reverse(JobsOperationsLeft[J.idx].begin(), JobsOperationsLeft[J.idx].end());
             }
@@ -243,21 +238,20 @@ namespace jobshop {
             OperationsMachines.assign(IOD.numO, vector<int>());
             MachinesOperations.assign(IOD.numM, vector<int>());
 
-            vector<set<int>> OperationsMachinesSet(IOD.numO);
-            vector<set<int>> MachinesOperationsSet(IOD.numM);
+            vector<set<int> > OperationsMachinesSet(IOD.numO);
+            vector<set<int> > MachinesOperationsSet(IOD.numM);
 
-            assert( IOD.numO == IOD.OMtime.size());
+            assert(IOD.numO == IOD.OMtime.size());
 
             avgOpTime = 0.0f;
             int opTimeNum = 0;
 
-            for ( int o = 0; o < IOD.numO; o++ ) {
+            for (int o = 0; o < IOD.numO; o++) {
+                assert(IOD.numM == IOD.OMtime[o].size());
 
-                assert( IOD.numM == IOD.OMtime[o].size());
-
-                for ( int m = 0; m < IOD.numM; m++ ) {
+                for (int m = 0; m < IOD.numM; m++) {
                     int t = IOD.OMtime[o][m];
-                    if ( t > 0 ) {
+                    if (t > 0) {
                         avgOpTime += t;
                         opTimeNum += 1;
                         OperationsMachinesSet[o].insert(m);
@@ -268,14 +262,14 @@ namespace jobshop {
 
             avgOpTime /= opTimeNum;
 
-            for ( int o = 0; o < OperationsMachinesSet.size(); o++ ) {
-                for ( auto m: OperationsMachinesSet[o] ) {
+            for (int o = 0; o < OperationsMachinesSet.size(); o++) {
+                for (auto m: OperationsMachinesSet[o]) {
                     OperationsMachines[o].push_back(m);
                 }
             }
 
             for (int m = 0; m < MachinesOperationsSet.size(); m++) {
-                for ( auto o: MachinesOperationsSet[m] ) {
+                for (auto o: MachinesOperationsSet[m]) {
                     MachinesOperations[m].push_back(o);
                 }
             }
@@ -299,7 +293,7 @@ namespace jobshop {
             int delta_x = max(0, MachineEndTime[m] - x_max);
 
             if (delta_x > 0) {
-                View1D.array() += (float)delta_x;
+                View1D.array() += (float) delta_x;
                 x_max += delta_x;
             }
 
@@ -316,9 +310,9 @@ namespace jobshop {
             int idx = 0;
             float sc = avgOpTime * 2;
             for (int i = 0; i < Data.numM; i++) {
-                NNInput.middleRows(idx, Data.numM)(idx + i) = scaleTanh( 0.5f / (sc*(1.0 + Scale[i])) * View1D[i] );
+                NNInput.middleRows(idx, Data.numM)(idx + i) = scaleTanh(0.5f / (sc * (1.0 + Scale[i])) * View1D[i]);
             }
-            NNInput.middleRows(idx, Data.numM)(m) = scaleTanh(0.5f / (sc*(1.0 + Scale[m])) * (met - x_max) );
+            NNInput.middleRows(idx, Data.numM)(m) = scaleTanh(0.5f / (sc * (1.0 + Scale[m])) * (met - x_max));
 
             idx += Data.numM;
 
@@ -336,7 +330,7 @@ namespace jobshop {
                 // next operation in current job
                 NNInput.middleRows(idx, Data.numO).array() = 0.0f;
                 if (JobsOperationsLeft[j].size() > 1) {
-                    int noi = JobsOperationsLeft[j].size()-2;
+                    int noi = JobsOperationsLeft[j].size() - 2;
                     int no = JobsOperationsLeft[j][noi];
                     NNInput.middleRows(idx, Data.numO)(no) = 1.0f;
                 }
@@ -344,35 +338,37 @@ namespace jobshop {
             }
 
             if (Conf.numOperationsInfo) {
-
                 auto V = NNInput.middleRows(idx, Data.numO);
 
-                for ( int i = 0; i < Data.numO; i++ ) {
-                    V(i) = scaleTanh( 0.5/(2.0*(1.0 + ScaleNumOperationsInfo[i])) * NumOperationsLeft[i] );
+                for (int i = 0; i < Data.numO; i++) {
+                    V(i) = scaleTanh(0.5 / (2.0 * (1.0 + ScaleNumOperationsInfo[i])) * NumOperationsLeft[i]);
                 }
 
                 idx += Data.numO;
             }
 
             if (Conf.numAllOperationsInfo) {
-                NNInput(idx) = scaleTanh(0.5f/(2*Conf.numM) * numAllTasksLeft);
+                NNInput(idx) = scaleTanh(0.5f / (2 * Conf.numM) * numAllTasksLeft);
                 idx += 1;
             }
 
             // operations left in current job
             for (int i = 0; i < Data.numO; i++) {
-                NNInput(idx + i) = (JobsOperationsNumLeft[j][i] == 0 ? 0.0f : scaleTanh(0.5f/2 * JobsOperationsNumLeft[j][i]));
+                NNInput(idx + i) = (JobsOperationsNumLeft[j][i] == 0
+                                        ? 0.0f
+                                        : scaleTanh(0.5f / 2 * JobsOperationsNumLeft[j][i]));
             }
             idx += Data.numO;
 
-            NNInput(idx) = scaleTanh(0.5f/(avgOpTime*(1.0 + Scale.back())) * wasted);
+            NNInput(idx) = scaleTanh(0.5f / (avgOpTime * (1.0 + Scale.back())) * wasted);
             idx += 1;
 
             if (NNInput.rows() != idx)
-                INTERNAL("NNInput.rows() != idx (" + to_string(NNInput.rows()) + " != " + to_string(idx) + "), numO=" + to_string(Data.numO) + " numO=" + to_string(Conf.numO) + " numM=" + to_string(Data.numM) + " numM=" + to_string(Conf.numM));
-
+                INTERNAL(
+                    "NNInput.rows() != idx (" + to_string(NNInput.rows()) + " != " + to_string(idx) + "), numO=" +
+                    to_string(Data.numO) + " numO=" + to_string(Conf.numO) + " numM=" + to_string(Data.numM) + " numM="
+                    + to_string(Conf.numM));
         }
-
     };
 
     // template<typename T>
@@ -381,9 +377,9 @@ namespace jobshop {
     // }
 
     template<typename T>
-        auto to_json(nlohmann::json& j, const T& c)
-            -> std::enable_if_t<std::is_same_v<T, typename JobshopConstructionHeuristic<typename T::AFT, typename T::GenConfT>::ConfigType>>
-    {
+    auto to_json(nlohmann::json &j, const T &c)
+        -> std::enable_if_t<std::is_same_v<T, typename JobshopConstructionHeuristic<typename T::AFT, typename
+            T::GenConfT>::ConfigType> > {
         j = nlohmann::json{};
         j.emplace("desc", c.desc);
         j.emplace("noAutoScaleEval", c.noAutoScaleEval);
@@ -394,17 +390,16 @@ namespace jobshop {
         j.emplace("numAllTasksInfo", c.numAllOperationsInfo);
         j.emplace("numM", c.numM);
         j.emplace("numO", c.numO);
-        j.emplace("AConf", c.AConf );
-        j.emplace("GConf", c.GConf );
+        j.emplace("AConf", c.AConf);
+        j.emplace("GConf", c.GConf);
     }
 
 
-
     template<typename T>
-       auto from_json(nlohmann::json& j, T& c)
-          -> std::enable_if_t<std::is_same_v<T, typename JobshopConstructionHeuristic<typename T::AFT, typename T::GenConfT>::ConfigType>>
-    {
-    //const nlohmann::json &j, typename JobshopConstructionHeuristic<AFType,GenConfType>::ConfigType &c) {
+    auto from_json(nlohmann::json &j, T &c)
+        -> std::enable_if_t<std::is_same_v<T, typename JobshopConstructionHeuristic<typename T::AFT, typename
+            T::GenConfT>::ConfigType> > {
+        //const nlohmann::json &j, typename JobshopConstructionHeuristic<AFType,GenConfType>::ConfigType &c) {
         j.at("desc").get_to(c.desc);
         j.at("noAutoScaleEval").get_to(c.noAutoScaleEval);
         j.at("autoScale").get_to(c.autoScale);
@@ -419,7 +414,7 @@ namespace jobshop {
     }
 
 
-  //  static_assert(chof::ConstructionHeuristicConcept<JobshopConstructionHeuristic<nnutils::FFN, GenConfigType>>);
+    //  static_assert(chof::ConstructionHeuristicConcept<JobshopConstructionHeuristic<nnutils::FFN, GenConfigType>>);
 };
 
 

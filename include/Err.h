@@ -16,17 +16,16 @@
 #include <iostream>
 
 namespace chof {
-
     using namespace std;
 
     struct Err {
         string msg;
 
-        Err() : msg() {}
-        Err( const string &_msg ) : msg(_msg) {};
+        Err() : msg() {
+        }
 
-
-
+        Err(const string &_msg) : msg(_msg) {
+        };
     };
 
 #define INFO(msg) std::cout << std::endl << __FILE__<< " (" << __LINE__ << "): " << msg << std::endl;

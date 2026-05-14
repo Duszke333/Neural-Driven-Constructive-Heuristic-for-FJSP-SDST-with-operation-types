@@ -129,7 +129,7 @@ namespace jobshop {
         }
 
         // TODO: TEST
-        IOD.setupTimes.assign(IOD.numO, std::vector<std::vector<int>>(IOD.numO, std::vector<int>(IOD.numM, 0)));
+        IOD.setupTimes.assign(IOD.numO, std::vector<std::vector<int> >(IOD.numO, std::vector<int>(IOD.numM, 0)));
 
         if (reading_setups) {
             for (int m = 0; m < IOD.numM; ++m) {

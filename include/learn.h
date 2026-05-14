@@ -15,9 +15,7 @@
 #include "utils.h"
 
 
-
 namespace chof {
-
     // Alias for cleaner code
 
 
@@ -27,7 +25,6 @@ namespace chof {
 
 
     struct OptConfig {
-
         int seed = 1;
         int population = 192;
         vector<int> NumEvals = {1};
@@ -37,12 +34,14 @@ namespace chof {
         bool zero = false;
         bool storeProgressInfo = false;
         string progressFile = "";
-        int timeLimit = 0; //< time after which the optimization/learning is interrupted. The best result is returned. 0 - no time limit
+        int timeLimit = 0;
+        //< time after which the optimization/learning is interrupted. The best result is returned. 0 - no time limit
 
-        OptConfig() {}
+        OptConfig() {
+        }
 
-        OptConfig(int numEvals, double sigma ) : NumEvals({numEvals}), Sigmas({sigma} ), mt_feval(true) {}
-
+        OptConfig(int numEvals, double sigma) : NumEvals({numEvals}), Sigmas({sigma}), mt_feval(true) {
+        }
     };
 
     inline void to_json(nlohmann::json &j, const OptConfig &config) {
@@ -59,7 +58,7 @@ namespace chof {
         j.emplace("timeLimit", config.timeLimit);
     }
 
-    inline void from_json(const nlohmann::json& j, OptConfig& p) {
+    inline void from_json(const nlohmann::json &j, OptConfig &p) {
         j.at("seed").get_to(p.seed);
         j.at("population").get_to(p.population);
         j.at("NumEvals").get_to(p.NumEvals);
@@ -75,24 +74,24 @@ namespace chof {
     }
 
 
-
-    struct LearnConfig : public OptConfig  {
+    struct LearnConfig : public OptConfig {
         int trainingDataSize;
         int itersToValidate; //< number of iteratios before applying validation
         int numValidationThreads; //< number of threads used for validation
 
-        LearnConfig() {}
+        LearnConfig() {
+        }
     };
 
     inline void to_json(nlohmann::json &j, const LearnConfig &c) {
-        j = nlohmann::json((OptConfig &)c);
+        j = nlohmann::json((OptConfig &) c);
         j.emplace("trainingDataSize", c.trainingDataSize);
         j.emplace("itersToValidate", c.itersToValidate);
         j.emplace("numValidationThreads", c.numValidationThreads);
     }
 
     inline void from_json(const nlohmann::json &j, LearnConfig &c) {
-        from_json(j, (OptConfig&)c);
+        from_json(j, (OptConfig &) c);
         j.at("trainingDataSize").get_to(c.trainingDataSize);
         j.at("itersToValidate").get_to(c.itersToValidate);
         j.at("numValidationThreads").get_to(c.numValidationThreads);
@@ -122,7 +121,6 @@ namespace chof {
     // }
 
 
-
     /**
      * Optimizes a CH heuristic to best solve the _Data problem, the resulting heuristic is stored in CHOut
      * @tparam CHType
@@ -132,13 +130,12 @@ namespace chof {
      * @param CHOut
      * @return
      */
-    template<ConstructionHeuristicConcept CHType >
+    template<ConstructionHeuristicConcept CHType>
     typename CHType::DataType::SolutionType opt(
         const OptConfig &Config,
         const CHType &CH,
         typename CHType::DataType &_Data,
         CHType &CHOut) {
-
         auto time_start = std::chrono::steady_clock::now();
 
         typename CHType::DataType Data = _Data;
@@ -148,7 +145,7 @@ namespace chof {
             outfile2 << "n-iter; fevals; avg_fval; best_fval; best_so_far; time" << endl;
         }
 
-        vector<typename CHType::DataType*> TrainingDataP;
+        vector<typename CHType::DataType *> TrainingDataP;
 
         TrainingDataP.push_back(&Data);
 
@@ -158,39 +155,39 @@ namespace chof {
         std::vector<double> x0;
         CH.getParams(x0);
 
-        std::function<double(const double*, const int& n) > F = PE;
+        std::function < double(const double*, const int&n) > F = PE;
 
         ProgressFunc<CMAParameters<>, CMASolutions> progress_func = // pfuncdef_impl<TCovarianceUpdate,TGenoPheno>;
 
-                    [&](const CMAParameters <> & cmaparams, const CMASolutions & cmasols) {
+                [&](const CMAParameters<> &cmaparams, const CMASolutions &cmasols) {
+            double ssum = 0.0;
+            int nnum = 0;
+            for (const Candidate &c: ((CMASolutions &) cmasols).candidates()) {
+                ssum += c.get_fvalue();
+                nnum += 1;
+            }
 
-                        double ssum = 0.0;
-                        int nnum = 0;
-                        for (const Candidate &c : ((CMASolutions&) cmasols).candidates()) {
-                            ssum += c.get_fvalue();
-                            nnum += 1;
-                        }
+            auto time_end = std::chrono::steady_clock::now();
+            auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(time_end - time_start).count();
 
-                        auto time_end = std::chrono::steady_clock::now();
-                        auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(time_end - time_start).count();
+            double time_s = 0.001 * elapsed_ms;
 
-                        double time_s = 0.001 * elapsed_ms;
+            if (outfile2.is_open()) {
+                outfile2 << setprecision(4) << cmasols.niter() << "; " << cmasols.fevals() << "; " << ssum / nnum <<
+                        "; " << cmasols.best_candidate().get_fvalue() << "; " << cmasols.get_best_seen_candidate().
+                        get_fvalue();
+                outfile2 << setprecision(2) << "; " << std::fixed << time_s << endl << flush;
+            }
+            //!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            //cout << cmasols.niter() << "; " << cmasols.fevals() << "; " << ssum/nnum << "; " << cmasols.best_candidate().get_fvalue() << "; " << cmasols.get_best_seen_candidate().get_fvalue() << endl << flush;
+            // cout << "." << flush;
 
-                        if (outfile2.is_open()) {
-
-                            outfile2 << setprecision(4) << cmasols.niter() << "; " << cmasols.fevals() << "; " << ssum/nnum << "; " << cmasols.best_candidate().get_fvalue() << "; " << cmasols.get_best_seen_candidate().get_fvalue();
-                            outfile2 << setprecision(2) << "; " << std::fixed << time_s << endl << flush;
-                        }
-                        //!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                        //cout << cmasols.niter() << "; " << cmasols.fevals() << "; " << ssum/nnum << "; " << cmasols.best_candidate().get_fvalue() << "; " << cmasols.get_best_seen_candidate().get_fvalue() << endl << flush;
-                        // cout << "." << flush;
-
-                        if (Config.timeLimit > 0 && time_s > Config.timeLimit) {
-                            // cout << cmasols.fevals() << endl;    //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                            return 1;
-                        } else {
-                            return 0;
-                        }
+            if (Config.timeLimit > 0 && time_s > Config.timeLimit) {
+                // cout << cmasols.fevals() << endl;    //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                return 1;
+            } else {
+                return 0;
+            }
         };
 
 
@@ -199,21 +196,20 @@ namespace chof {
         typename CHType::DataType::SolutionType BestSolution;
 
         for (int it = 0; it < Config.NumEvals.size(); it++) {
-
-            CMAParameters<> cmaparams(x0, Config.Sigmas[it], Config.population, (it+1)*(Config.seed+1)*100);
+            CMAParameters<> cmaparams(x0, Config.Sigmas[it], Config.population, (it + 1) * (Config.seed + 1) * 100);
 
             // -1 for automatically decided lambda, 0 is for random seeding of the internal generator.
             // cmaparams.set_algo(sepaCMAES);
             cmaparams.set_algo(sepaCMAES);
-            cmaparams.set_mt_feval( Config.mt_feval );
-            cmaparams.set_max_fevals(Config.NumEvals[it] );
+            cmaparams.set_mt_feval(Config.mt_feval);
+            cmaparams.set_max_fevals(Config.NumEvals[it]);
             cmaparams.set_quiet(Config.quiet);
             cmaparams.set_maximize(CH.maximize());
-          //  cmaparams.set_elitism(2);
+            //  cmaparams.set_elitism(2);
             cmaparams.set_elitism(1);
             cmaparams.set_stopping_criteria(EQUALFUNVALS, false);
             cmaparams.set_stopping_criteria(STAGNATION, false);
-             cmaparams.set_stopping_criteria(TOLHISTFUN, false);  //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            cmaparams.set_stopping_criteria(TOLHISTFUN, false); //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
             // CMASolutions cmasols = cmaes<>(F, cmaparams);
@@ -241,7 +237,7 @@ namespace chof {
     }
 
 
-/**
+    /**
      * Optimizes a CH heuristic to best solve the _Data problem, the resulting heuristic is stored in CHOut
      * @tparam CHType
      * @param Config optimization paramters
@@ -250,14 +246,13 @@ namespace chof {
      * @param CHOut
      * @return
      */
-    template<ConstructionHeuristicConcept CHType, typename RandomDataGenerator >
+    template<ConstructionHeuristicConcept CHType, typename RandomDataGenerator>
     typename CHType::DataType::SolutionType opt2(
         const LearnConfig &Config,
         const CHType &CH,
         typename CHType::DataType &_Data,
         RandomDataGenerator &RDG,
         CHType &CHOut) {
-
         auto time_start = std::chrono::steady_clock::now();
 
         std::ofstream outfile2;
@@ -274,7 +269,7 @@ namespace chof {
             DataVec[i] = RDG(gen, _Data);
         }
 
-        vector<typename CHType::DataType*> TrainingDataP;
+        vector<typename CHType::DataType *> TrainingDataP;
         TrainingDataP.resize(Config.trainingDataSize);
         for (int i = 0; i < Config.trainingDataSize; i++) {
             TrainingDataP[i] = &(DataVec[i]);
@@ -287,44 +282,43 @@ namespace chof {
         std::vector<double> x0;
         CH.getParams(x0);
 
-        std::function<double(const double*, const int& n) > F = PE;
+        std::function < double(const double*, const int&n) > F = PE;
 
         ProgressFunc<CMAParameters<>, CMASolutions> progress_func = // pfuncdef_impl<TCovarianceUpdate,TGenoPheno>;
 
-                    [&](const CMAParameters <> & cmaparams, const CMASolutions & cmasols) {
+                [&](const CMAParameters<> &cmaparams, const CMASolutions &cmasols) {
+            double ssum = 0.0;
+            int nnum = 0;
+            for (const Candidate &c: ((CMASolutions &) cmasols).candidates()) {
+                ssum += c.get_fvalue();
+                nnum += 1;
+            }
 
-                        double ssum = 0.0;
-                        int nnum = 0;
-                        for (const Candidate &c : ((CMASolutions&) cmasols).candidates()) {
-                            ssum += c.get_fvalue();
-                            nnum += 1;
-                        }
+            auto time_end = std::chrono::steady_clock::now();
+            auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(time_end - time_start).count();
 
-                        auto time_end = std::chrono::steady_clock::now();
-                        auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(time_end - time_start).count();
+            double time_s = 0.001 * elapsed_ms;
 
-                        double time_s = 0.001 * elapsed_ms;
+            if (outfile2.is_open()) {
+                outfile2 << setprecision(4) << cmasols.niter() << "; " << cmasols.fevals() << "; " << ssum / nnum <<
+                        "; " << cmasols.best_candidate().get_fvalue() << "; " << cmasols.get_best_seen_candidate().
+                        get_fvalue();
+                outfile2 << setprecision(2) << "; " << std::fixed << time_s << endl << flush;
+            }
+            //!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            //cout << cmasols.niter() << "; " << cmasols.fevals() << "; " << ssum/nnum << "; " << cmasols.best_candidate().get_fvalue() << "; " << cmasols.get_best_seen_candidate().get_fvalue() << endl << flush;
+            cout << "." << flush;
 
-                        if (outfile2.is_open()) {
+            if (Config.timeLimit > 0 && time_s > Config.timeLimit) {
+                // cout << cmasols.fevals() << endl;    //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                return 1;
+            } else {
+                for (int i = 1; i < Config.trainingDataSize; i++) {
+                    DataVec[i] = RDG(gen, _Data);
+                }
 
-                            outfile2 << setprecision(4) << cmasols.niter() << "; " << cmasols.fevals() << "; " << ssum/nnum << "; " << cmasols.best_candidate().get_fvalue() << "; " << cmasols.get_best_seen_candidate().get_fvalue();
-                            outfile2 << setprecision(2) << "; " << std::fixed << time_s << endl << flush;
-                        }
-                        //!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                        //cout << cmasols.niter() << "; " << cmasols.fevals() << "; " << ssum/nnum << "; " << cmasols.best_candidate().get_fvalue() << "; " << cmasols.get_best_seen_candidate().get_fvalue() << endl << flush;
-                        cout << "." << flush;
-
-                        if (Config.timeLimit > 0 && time_s > Config.timeLimit) {
-                            // cout << cmasols.fevals() << endl;    //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                            return 1;
-                        } else {
-
-                            for (int i = 1; i < Config.trainingDataSize; i++) {
-                                DataVec[i] = RDG(gen, _Data);
-                            }
-
-                            return 0;
-                        }
+                return 0;
+            }
         };
 
 
@@ -333,8 +327,7 @@ namespace chof {
         typename CHType::DataType::SolutionType BestSolution;
 
         for (int it = 0; it < Config.NumEvals.size(); it++) {
-
-            CMAParameters<> cmaparams(x0, Config.Sigmas[it], Config.population, (it+1)*(Config.seed+1)*100);
+            CMAParameters<> cmaparams(x0, Config.Sigmas[it], Config.population, (it + 1) * (Config.seed + 1) * 100);
 
             // -1 for automatically decided lambda, 0 is for random seeding of the internal generator.
             // cmaparams.set_algo(sepaCMAES);
@@ -343,15 +336,15 @@ namespace chof {
 #ifndef NDEBUG
             mt = false;
 #endif
-            cmaparams.set_mt_feval( mt );
-            cmaparams.set_max_fevals(Config.NumEvals[it] );
+            cmaparams.set_mt_feval(mt);
+            cmaparams.set_max_fevals(Config.NumEvals[it]);
             cmaparams.set_quiet(Config.quiet);
             cmaparams.set_maximize(CH.maximize());
-          //  cmaparams.set_elitism(2);
+            //  cmaparams.set_elitism(2);
             cmaparams.set_elitism(1);
             cmaparams.set_stopping_criteria(EQUALFUNVALS, false);
             cmaparams.set_stopping_criteria(STAGNATION, false);
-             cmaparams.set_stopping_criteria(TOLHISTFUN, false);  //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            cmaparams.set_stopping_criteria(TOLHISTFUN, false); //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
             // CMASolutions cmasols = cmaes<>(F, cmaparams);
@@ -380,22 +373,22 @@ namespace chof {
 
 
     template<DataConcept DataType>
-    void selectRandomData( std::mt19937 &gen, vector<DataType> &TotalData, int numData, vector<DataType*> &SelectedData ) {
-        SelectedData.resize( numData );
+    void selectRandomData(std::mt19937 &gen, vector<DataType> &TotalData, int numData,
+                          vector<DataType *> &SelectedData) {
+        SelectedData.resize(numData);
 
-        for( auto &TD: SelectedData ) {
-            TD = &(TotalData[uniform_int_distribution<>(0, TotalData.size()-1)(gen)]);
+        for (auto &TD: SelectedData) {
+            TD = &(TotalData[uniform_int_distribution<>(0, TotalData.size() - 1)(gen)]);
         }
     }
 
 
-    template<ConstructionHeuristicConcept CHType >
+    template<ConstructionHeuristicConcept CHType>
     double learn(const LearnConfig &Config,
-        const CHType &CH,
-        vector<typename CHType::DataType> &TotalData,
-        vector<typename CHType::DataType> &ValidationData,
-        CHType &CHOut) {
-
+                 const CHType &CH,
+                 vector<typename CHType::DataType> &TotalData,
+                 vector<typename CHType::DataType> &ValidationData,
+                 CHType &CHOut) {
         auto time_start = std::chrono::steady_clock::now();
 
         std::ofstream outfile2;
@@ -405,17 +398,17 @@ namespace chof {
             outfile2 << "n-iter; fevals; curr_obj; best_obj; avg_fval; best_fval; time" << endl;
         }
 
-        vector<typename CHType::DataType*> TrainingDataP;
+        vector<typename CHType::DataType *> TrainingDataP;
 
-        vector<typename CHType::DataType*> ValidationDataP;
+        vector<typename CHType::DataType *> ValidationDataP;
 
         ValidationDataP.clear();
-        for( auto &D: ValidationData) {
+        for (auto &D: ValidationData) {
             ValidationDataP.push_back(&D);
         }
 
         if constexpr (InitializedDataConcept<typename CHType::DataType>) {
-            for ( auto VDP: ValidationDataP ) {
+            for (auto VDP: ValidationDataP) {
                 VDP->init();
             }
         }
@@ -426,7 +419,7 @@ namespace chof {
         selectRandomData(gen, TotalData, Config.trainingDataSize, TrainingDataP);
 
         if constexpr (InitializedDataConcept<typename CHType::DataType>) {
-            for ( auto TDP: TrainingDataP ) {
+            for (auto TDP: TrainingDataP) {
                 TDP->init();
             }
         }
@@ -435,14 +428,14 @@ namespace chof {
 
         ParallelEvaluator PE(DSE);
 
-        std::function<double(const double*, const int& n) > F = PE;
+        std::function < double(const double*, const int&n) > F = PE;
 
         int dim = CH.getParamsSize();
 
         // starting point
         std::vector<double> x0;
 
-        CH.getParams( x0 );
+        CH.getParams(x0);
 
         vector<double> BestXX;
         double BestObj;
@@ -451,94 +444,93 @@ namespace chof {
 
         ProgressFunc<CMAParameters<>, CMASolutions> progress_func = // pfuncdef_impl<TCovarianceUpdate,TGenoPheno>;
 
-                    [&](const CMAParameters <> & cmaparams, const CMASolutions & cmasols) {
-                        static int last_batch = 0;
+                [&](const CMAParameters<> &cmaparams, const CMASolutions &cmasols) {
+            static int last_batch = 0;
 
-                        double ssum = 0.0;
-                        int nnum = 0;
-                        for (const Candidate &c : ((CMASolutions&) cmasols).candidates()) {
-                            ssum += c.get_fvalue();
-                            nnum += 1;
-                        }
+            double ssum = 0.0;
+            int nnum = 0;
+            for (const Candidate &c: ((CMASolutions &) cmasols).candidates()) {
+                ssum += c.get_fvalue();
+                nnum += 1;
+            }
 
-                        cout << endl << std::setprecision(std::numeric_limits<double>::digits10) <<
-                        "iter=" << cmasols.niter() <<
-                        " / evals=" << cmasols.fevals() <<
-                        " / avg-value=" << ssum / nnum <<
-                        " / f-value=" << cmasols.best_candidate().get_fvalue() <<
-                        " / best f-value=" << cmasols.get_best_seen_candidate().get_fvalue() <<
-                        " / sigma=" << cmasols.sigma() <<
-                        " / last_iter=" << cmasols.elapsed_last_iter() << flush;
+            cout << endl << std::setprecision(std::numeric_limits<double>::digits10) <<
+                    "iter=" << cmasols.niter() <<
+                    " / evals=" << cmasols.fevals() <<
+                    " / avg-value=" << ssum / nnum <<
+                    " / f-value=" << cmasols.best_candidate().get_fvalue() <<
+                    " / best f-value=" << cmasols.get_best_seen_candidate().get_fvalue() <<
+                    " / sigma=" << cmasols.sigma() <<
+                    " / last_iter=" << cmasols.elapsed_last_iter() << flush;
 
-                        auto Params = cmasols.best_candidate().get_x();
+            auto Params = cmasols.best_candidate().get_x();
 
-                        int new_batch = cmasols.fevals() / (Config.itersToValidate * Config.population);
+            int new_batch = cmasols.fevals() / (Config.itersToValidate * Config.population);
 
-                        if ((new_batch != last_batch && cmasols.niter() > 0) || cmasols.niter() == 1) {
+            if ((new_batch != last_batch && cmasols.niter() > 0) || cmasols.niter() == 1) {
+                last_batch = new_batch;
 
-                            last_batch = new_batch;
+                // cout << "4" << endl << flush;
+                ParallelDataSetEvaluator TSS(ValidationDataP, CH, Config.numValidationThreads);
+                // cout << "5" << endl << flush;
 
-                            // cout << "4" << endl << flush;
-                            ParallelDataSetEvaluator TSS(ValidationDataP, CH, Config.numValidationThreads);
-                            // cout << "5" << endl << flush;
-
-                            double TSSobj = TSS(Params.data(), Params.size());
+                double TSSobj = TSS(Params.data(), Params.size());
 
 
-                            cout << endl << "TSS.ResAvg = " << TSSobj << endl << flush;
+                cout << endl << "TSS.ResAvg = " << TSSobj << endl << flush;
 
-                            if (CH.maximize() ? TSSobj > BestObj : TSSobj < BestObj) {
-                                BestObj = TSSobj;
-                                BestXX = Params;
-                            }
+                if (CH.maximize() ? TSSobj > BestObj : TSSobj < BestObj) {
+                    BestObj = TSSobj;
+                    BestXX = Params;
+                }
 
-                            auto time_end = std::chrono::steady_clock::now();
-                            auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(time_end - time_start).count();
+                auto time_end = std::chrono::steady_clock::now();
+                auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(time_end - time_start).count();
 
-                            double time_s = 0.001 * elapsed_ms;
+                double time_s = 0.001 * elapsed_ms;
 
-                            if (outfile2.is_open()) {
-                                outfile2 << setprecision(4) <<  cmasols.niter() << "; " << cmasols.fevals() << "; " << TSSobj << "; " << BestObj << "; " << ssum/nnum << "; " << cmasols.best_candidate().get_fvalue();
-                                outfile2 << setprecision(2) << "; " << std::fixed << time_s << endl << flush;
-                            }
+                if (outfile2.is_open()) {
+                    outfile2 << setprecision(4) << cmasols.niter() << "; " << cmasols.fevals() << "; " << TSSobj << "; "
+                            << BestObj << "; " << ssum / nnum << "; " << cmasols.best_candidate().get_fvalue();
+                    outfile2 << setprecision(2) << "; " << std::fixed << time_s << endl << flush;
+                }
 
-                            if (Config.timeLimit > 0 && time_s > Config.timeLimit) {
-                                return 1;
-                            }
-                        }
+                if (Config.timeLimit > 0 && time_s > Config.timeLimit) {
+                    return 1;
+                }
+            }
 
-                        if constexpr (InitializedDataConcept<typename CHType::DataType>) {
-                            for ( auto TDP: TrainingDataP ) {
-                                TDP->free();
-                            }
-                        }
+            if constexpr (InitializedDataConcept<typename CHType::DataType>) {
+                for (auto TDP: TrainingDataP) {
+                    TDP->free();
+                }
+            }
 
-                        selectRandomData(gen, TotalData, Config.trainingDataSize, TrainingDataP);
+            selectRandomData(gen, TotalData, Config.trainingDataSize, TrainingDataP);
 
-                        if constexpr (InitializedDataConcept<typename CHType::DataType>) {
-                            for ( auto TDP: TrainingDataP ) {
-                                TDP->init();
-                            }
-                        }
+            if constexpr (InitializedDataConcept<typename CHType::DataType>) {
+                for (auto TDP: TrainingDataP) {
+                    TDP->init();
+                }
+            }
 
-                        return 0;
+            return 0;
         };
 
 
         for (int it = 0; it < Config.NumEvals.size(); it++) {
-
             // cout << "1" << endl << flush;
 
-            CMAParameters<> cmaparams(x0, Config.Sigmas[it], Config.population, (it+1)*(Config.seed+1)*100);
+            CMAParameters<> cmaparams(x0, Config.Sigmas[it], Config.population, (it + 1) * (Config.seed + 1) * 100);
 
             // -1 for automatically decided lambda, 0 is for random seeding of the internal generator.
-           cmaparams.set_algo(sepaCMAES ); // 2
-           // cmaparams.set_algo(VD_BIPOP_CMAES ); // 104
-           // cmaparams.set_algo(VD_CMAES ); // 103
+            cmaparams.set_algo(sepaCMAES); // 2
+            // cmaparams.set_algo(VD_BIPOP_CMAES ); // 104
+            // cmaparams.set_algo(VD_CMAES ); // 103
             // cmaparams.set_algo(sepaBIPOP_CMAES); //102
-            cmaparams.set_mt_feval( Config.mt_feval );
-            cout << "multi threading:" << (Config.mt_feval?"yes":"no") << endl << flush;
-            cmaparams.set_max_fevals(Config.NumEvals[it] );
+            cmaparams.set_mt_feval(Config.mt_feval);
+            cout << "multi threading:" << (Config.mt_feval ? "yes" : "no") << endl << flush;
+            cmaparams.set_max_fevals(Config.NumEvals[it]);
             cmaparams.set_quiet(Config.quiet);
             cmaparams.set_maximize(CH.maximize());
             cmaparams.set_stopping_criteria(EQUALFUNVALS, false);
@@ -550,7 +542,7 @@ namespace chof {
             x0 = BestXX;
 
             if constexpr (InitializedDataConcept<typename CHType::DataType>) {
-                for ( auto TDP: TrainingDataP ) {
+                for (auto TDP: TrainingDataP) {
                     TDP->free();
                 }
             }
@@ -565,14 +557,13 @@ namespace chof {
     }
 
 
-       template<ConstructionHeuristicConcept CHType >
+    template<ConstructionHeuristicConcept CHType>
     double learn2(const LearnConfig &Config,
-        const CHType &CH,
-        typename CHType::DataType &_Data,
-        vector<typename CHType::DataType> &TotalData,
-        vector<typename CHType::DataType> &ValidationData,
-        CHType &CHOut) {
-
+                  const CHType &CH,
+                  typename CHType::DataType &_Data,
+                  vector<typename CHType::DataType> &TotalData,
+                  vector<typename CHType::DataType> &ValidationData,
+                  CHType &CHOut) {
         auto time_start = std::chrono::steady_clock::now();
 
         std::ofstream outfile2;
@@ -582,17 +573,17 @@ namespace chof {
             outfile2 << "n-iter; fevals; curr_obj; best_obj; avg_fval; best_fval; time" << endl;
         }
 
-        vector<typename CHType::DataType*> TrainingDataP;
+        vector<typename CHType::DataType *> TrainingDataP;
 
-        vector<typename CHType::DataType*> ValidationDataP;
+        vector<typename CHType::DataType *> ValidationDataP;
 
         ValidationDataP.clear();
-        for( auto &D: ValidationData) {
+        for (auto &D: ValidationData) {
             ValidationDataP.push_back(&D);
         }
 
         if constexpr (InitializedDataConcept<typename CHType::DataType>) {
-            for ( auto VDP: ValidationDataP ) {
+            for (auto VDP: ValidationDataP) {
                 VDP->init();
             }
         }
@@ -604,7 +595,7 @@ namespace chof {
         TrainingDataP.front() = &_Data;
 
         if constexpr (InitializedDataConcept<typename CHType::DataType>) {
-            for ( auto TDP: TrainingDataP ) {
+            for (auto TDP: TrainingDataP) {
                 TDP->init();
             }
         }
@@ -613,14 +604,14 @@ namespace chof {
 
         ParallelEvaluator PE(DSE);
 
-        std::function<double(const double*, const int& n) > F = PE;
+        std::function < double(const double*, const int&n) > F = PE;
 
         int dim = CH.getParamsSize();
 
         // starting point
         std::vector<double> x0;
 
-        CH.getParams( x0 );
+        CH.getParams(x0);
 
         vector<double> BestXX;
         double BestObj;
@@ -629,90 +620,89 @@ namespace chof {
 
         ProgressFunc<CMAParameters<>, CMASolutions> progress_func = // pfuncdef_impl<TCovarianceUpdate,TGenoPheno>;
 
-                    [&](const CMAParameters <> & cmaparams, const CMASolutions & cmasols) {
-                        static int last_batch = 0;
+                [&](const CMAParameters<> &cmaparams, const CMASolutions &cmasols) {
+            static int last_batch = 0;
 
-                        double ssum = 0.0;
-                        int nnum = 0;
-                        for (const Candidate &c : ((CMASolutions&) cmasols).candidates()) {
-                            ssum += c.get_fvalue();
-                            nnum += 1;
-                        }
+            double ssum = 0.0;
+            int nnum = 0;
+            for (const Candidate &c: ((CMASolutions &) cmasols).candidates()) {
+                ssum += c.get_fvalue();
+                nnum += 1;
+            }
 
-                        cout << endl << std::setprecision(std::numeric_limits<double>::digits10) <<
-                        "iter=" << cmasols.niter() <<
-                        " / evals=" << cmasols.fevals() <<
-                        " / avg-value=" << ssum / nnum <<
-                        " / f-value=" << cmasols.best_candidate().get_fvalue() <<
-                        " / best f-value=" << cmasols.get_best_seen_candidate().get_fvalue() <<
-                        " / sigma=" << cmasols.sigma() <<
-                        " / last_iter=" << cmasols.elapsed_last_iter();
+            cout << endl << std::setprecision(std::numeric_limits<double>::digits10) <<
+                    "iter=" << cmasols.niter() <<
+                    " / evals=" << cmasols.fevals() <<
+                    " / avg-value=" << ssum / nnum <<
+                    " / f-value=" << cmasols.best_candidate().get_fvalue() <<
+                    " / best f-value=" << cmasols.get_best_seen_candidate().get_fvalue() <<
+                    " / sigma=" << cmasols.sigma() <<
+                    " / last_iter=" << cmasols.elapsed_last_iter();
 
-                        auto Params = cmasols.best_candidate().get_x();
+            auto Params = cmasols.best_candidate().get_x();
 
-                        int new_batch = cmasols.fevals() / (Config.itersToValidate * Config.population);
+            int new_batch = cmasols.fevals() / (Config.itersToValidate * Config.population);
 
-                        if ((new_batch != last_batch && cmasols.niter() > 0) || cmasols.niter() == 1) {
+            if ((new_batch != last_batch && cmasols.niter() > 0) || cmasols.niter() == 1) {
+                last_batch = new_batch;
 
-                            last_batch = new_batch;
+                // cout << "\n4" << endl << flush;
+                ParallelDataSetEvaluator TSS(ValidationDataP, CH, Config.numValidationThreads);
+                // cout << "\n5" << endl << flush;
 
-                            // cout << "\n4" << endl << flush;
-                            ParallelDataSetEvaluator TSS(ValidationDataP, CH, Config.numValidationThreads);
-                            // cout << "\n5" << endl << flush;
-
-                            double TSSobj = TSS(Params.data(), Params.size());
+                double TSSobj = TSS(Params.data(), Params.size());
 
 
-                            cout << endl << "TSS.ResAvg = " << TSSobj << endl << flush;
+                cout << endl << "TSS.ResAvg = " << TSSobj << endl << flush;
 
-                            if (CH.maximize() ? TSSobj > BestObj : TSSobj < BestObj) {
-                                BestObj = TSSobj;
-                                BestXX = Params;
-                            }
+                if (CH.maximize() ? TSSobj > BestObj : TSSobj < BestObj) {
+                    BestObj = TSSobj;
+                    BestXX = Params;
+                }
 
-                            auto time_end = std::chrono::steady_clock::now();
-                            auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(time_end - time_start).count();
+                auto time_end = std::chrono::steady_clock::now();
+                auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(time_end - time_start).count();
 
-                            double time_s = 0.001 * elapsed_ms;
+                double time_s = 0.001 * elapsed_ms;
 
-                            if (outfile2.is_open()) {
-                                outfile2 << setprecision(4) <<  cmasols.niter() << "; " << cmasols.fevals() << "; " << TSSobj << "; " << BestObj << "; " << ssum/nnum << "; " << cmasols.best_candidate().get_fvalue();
-                                outfile2 << setprecision(2) << "; " << std::fixed << time_s << endl << flush;
-                            }
+                if (outfile2.is_open()) {
+                    outfile2 << setprecision(4) << cmasols.niter() << "; " << cmasols.fevals() << "; " << TSSobj << "; "
+                            << BestObj << "; " << ssum / nnum << "; " << cmasols.best_candidate().get_fvalue();
+                    outfile2 << setprecision(2) << "; " << std::fixed << time_s << endl << flush;
+                }
 
-                            if (Config.timeLimit > 0 && time_s > Config.timeLimit) {
-                                return 1;
-                            }
-                        }
+                if (Config.timeLimit > 0 && time_s > Config.timeLimit) {
+                    return 1;
+                }
+            }
 
-                        if constexpr (InitializedDataConcept<typename CHType::DataType>) {
-                            for ( auto TDP: TrainingDataP ) {
-                                TDP->free();
-                            }
-                        }
+            if constexpr (InitializedDataConcept<typename CHType::DataType>) {
+                for (auto TDP: TrainingDataP) {
+                    TDP->free();
+                }
+            }
 
-                        selectRandomData(gen, TotalData, Config.trainingDataSize, TrainingDataP);
-                        TrainingDataP.front() = &_Data;
+            selectRandomData(gen, TotalData, Config.trainingDataSize, TrainingDataP);
+            TrainingDataP.front() = &_Data;
 
-                        if constexpr (InitializedDataConcept<typename CHType::DataType>) {
-                            for ( auto TDP: TrainingDataP ) {
-                                TDP->init();
-                            }
-                        }
+            if constexpr (InitializedDataConcept<typename CHType::DataType>) {
+                for (auto TDP: TrainingDataP) {
+                    TDP->init();
+                }
+            }
 
-                        return 0;
+            return 0;
         };
 
 
         for (int it = 0; it < Config.NumEvals.size(); it++) {
-
-            CMAParameters<> cmaparams(x0, Config.Sigmas[it], Config.population, (it+1)*(Config.seed+1)*100);
+            CMAParameters<> cmaparams(x0, Config.Sigmas[it], Config.population, (it + 1) * (Config.seed + 1) * 100);
 
             // -1 for automatically decided lambda, 0 is for random seeding of the internal generator.
             cmaparams.set_algo(sepaCMAES);
-            cmaparams.set_mt_feval( Config.mt_feval );
-            cout << "multi threading:" << (Config.mt_feval?"yes":"no") << endl << flush;
-            cmaparams.set_max_fevals(Config.NumEvals[it] );
+            cmaparams.set_mt_feval(Config.mt_feval);
+            cout << "multi threading:" << (Config.mt_feval ? "yes" : "no") << endl << flush;
+            cmaparams.set_max_fevals(Config.NumEvals[it]);
             cmaparams.set_quiet(Config.quiet);
             cmaparams.set_maximize(CH.maximize());
             cmaparams.set_stopping_criteria(EQUALFUNVALS, false);
@@ -724,7 +714,7 @@ namespace chof {
             x0 = BestXX;
 
             if constexpr (InitializedDataConcept<typename CHType::DataType>) {
-                for ( auto TDP: TrainingDataP ) {
+                for (auto TDP: TrainingDataP) {
                     TDP->free();
                 }
             }

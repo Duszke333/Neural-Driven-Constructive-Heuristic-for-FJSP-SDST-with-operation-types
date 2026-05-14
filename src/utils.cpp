@@ -4,7 +4,6 @@
 #include "utils.h"
 
 namespace nnutils {
-
     string getHumanReadableDateTime() {
         std::time_t now_c = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
         std::tm local_time = *std::localtime(&now_c);
@@ -27,7 +26,6 @@ namespace nnutils {
         string line, word, temp;
 
         while (!fin.eof()) {
-
             row.clear();
 
             // read an entire row and
@@ -39,7 +37,6 @@ namespace nnutils {
             // read every column data of a row and
             // store it in a string variable, 'word'
             while (getline(s, word, ';')) {
-
                 // add all the column data
                 // of a row to a vector
                 unquote(word);
@@ -50,9 +47,6 @@ namespace nnutils {
             if (!row.empty()) {
                 Table.push_back(row);
             }
-
         }
     }
-
-
 }
