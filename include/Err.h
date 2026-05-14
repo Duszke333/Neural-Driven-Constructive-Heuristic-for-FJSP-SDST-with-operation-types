@@ -29,6 +29,8 @@ namespace chof {
 
     };
 
+#define INFO(msg) std::cout << std::endl << __FILE__<< " (" << __LINE__ << "): " << msg << std::endl;
+
 #define WARN(msg) std::cerr << std::endl << __FILE__<< " (" << __LINE__ << "): warning: " << msg;
 
 
