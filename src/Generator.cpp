@@ -48,7 +48,7 @@ namespace jobshop {
 
         // TODO: read flags from CLI
         SetupConfig sConfig{};
-        sConfig.variant = 2;
+        sConfig.variant = 3;
         sConfig.eta = 1.0;
         sConfig.a = 0.2;
         sConfig.b = 0.4;

@@ -59,6 +59,7 @@ add_executable(nd-ch-fjsp
         include/SetupTimeGenerator.h
         include/RandomSetupGenerator.h
         include/MachineDependentSetupGenerator.h
+        include/AsymmetricSetupGenerator.h
 
         # Sources (in src/)
         src/DataExport.cpp
@@ -73,6 +74,7 @@ add_executable(nd-ch-fjsp
         src/SetupTimeFactory.cpp
         src/RandomSetupGenerator.cpp
         src/MachineDependentSetupGenerator.cpp
+        src/AsymmetricSetupGenerator.cpp
 )
 
 #------------------------------
