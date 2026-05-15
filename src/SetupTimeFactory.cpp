@@ -2,6 +2,7 @@
 #include "RandomSetupGenerator.h"
 #include "MachineDependentSetupGenerator.h"
 #include "AsymmetricSetupGenerator.h"
+#include "ClusteredSetupGenerator.h"
 #include "Err.h"
 #include <algorithm>
 #include <iostream>
@@ -15,6 +16,8 @@ namespace jobshop {
                 return std::make_unique<MachineDependentSetupGenerator>();
             case 3:
                 return std::make_unique<AsymmetricSetupGenerator>();
+            case 4:
+                return std::make_unique<ClusteredSetupGenerator>();
             default:
                 return nullptr;
         }
