@@ -1,21 +1,24 @@
 #include "SetupTimeGenerator.h"
 #include "RandomSetupGenerator.h"
+#include "MachineDependentSetupGenerator.h"
+#include "Err.h"
 #include <algorithm>
 #include <iostream>
-#include "Err.h"
 
 namespace jobshop {
     std::unique_ptr<SetupTimeGenerator> createSetupTimeGenerator(int variant) {
         switch (variant) {
             case 1:
                 return std::make_unique<RandomSetupGenerator>();
+            case 2:
+                return std::make_unique<MachineDependentSetupGenerator>();
             default:
                 return nullptr;
         }
     }
 
     void SetupTimeGenerator::enforceTriangleInequality(std::vector<std::vector<int> > &setupTimes, int numO) {
-        INFO("Running floyd-warshall");
+        // INFO("Running floyd-warshall");
         // Classic Floyd-Warshall for each machine
         for (int k = 0; k < numO; ++k) {
             for (int i = 0; i < numO; ++i) {
@@ -27,6 +30,6 @@ namespace jobshop {
                 }
             }
         }
-        INFO("Ran floyd-warshall");
+        // INFO("Ran floyd-warshall");
     }
 } // namespace jobshop

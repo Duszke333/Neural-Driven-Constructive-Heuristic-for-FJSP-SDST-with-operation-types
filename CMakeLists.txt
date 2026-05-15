@@ -58,7 +58,8 @@ add_executable(nd-ch-fjsp
         # SDST header files
         include/SetupTimeGenerator.h
         include/RandomSetupGenerator.h
-        
+        include/MachineDependentSetupGenerator.h
+
         # Sources (in src/)
         src/DataExport.cpp
         src/FFN.cpp
@@ -71,6 +72,7 @@ add_executable(nd-ch-fjsp
         # SDST source files
         src/SetupTimeFactory.cpp
         src/RandomSetupGenerator.cpp
+        src/MachineDependentSetupGenerator.cpp
 )
 
 #------------------------------
