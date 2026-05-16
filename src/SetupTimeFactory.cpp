@@ -3,9 +3,8 @@
 #include "MachineDependentSetupGenerator.h"
 #include "AsymmetricSetupGenerator.h"
 #include "ClusteredSetupGenerator.h"
+#include "ResourceSetupGenerator.h"
 #include "Err.h"
-#include <algorithm>
-#include <iostream>
 
 namespace jobshop {
     std::unique_ptr<SetupTimeGenerator> createSetupTimeGenerator(int variant) {
@@ -18,6 +17,8 @@ namespace jobshop {
                 return std::make_unique<AsymmetricSetupGenerator>();
             case 4:
                 return std::make_unique<ClusteredSetupGenerator>();
+            case 5:
+                return std::make_unique<ResourceSetupGenerator>();
             default:
                 return nullptr;
         }
