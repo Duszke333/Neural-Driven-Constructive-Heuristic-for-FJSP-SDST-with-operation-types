@@ -35,6 +35,11 @@ namespace jobshop {
          * Applies Floyd-Warshall algorithm to enforce triangle inequality
          */
         static void enforceTriangleInequality(std::vector<std::vector<int> > &setupTimes, int numO);
+
+        /**
+         * Calculates global mu based on OMtime matrix
+         */
+        static double calculateMu(const std::vector<std::vector<int> > &OMtime);
     };
 
     /**

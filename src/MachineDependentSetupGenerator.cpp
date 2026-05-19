@@ -10,18 +10,7 @@ namespace jobshop {
         int numO,
         const SetupConfig &config,
         std::mt19937 &gen) {
-        // Calculate global mu from OMtime (> 0)
-        double sum = 0;
-        int count = 0;
-        for (const auto &row: OMtime) {
-            for (int val: row) {
-                if (val > 0) {
-                    sum += val;
-                    count++;
-                }
-            }
-        }
-        double mu = (count > 0) ? (sum / count) : 1.0;
+        const double mu = calculateMu(OMtime);
 
         // Prepare random range U(a * eta * mu, b * eta * mu)
         int lower = static_cast<int>(std::round(config.a * config.eta * mu));

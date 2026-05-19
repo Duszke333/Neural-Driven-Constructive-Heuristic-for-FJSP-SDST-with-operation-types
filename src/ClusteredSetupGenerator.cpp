@@ -12,19 +12,7 @@ namespace jobshop {
         int numO,
         const SetupConfig &config,
         std::mt19937 &gen) {
-
-        // Calculate global mu
-        double sum = 0;
-        int count = 0;
-        for (const auto &row: OMtime) {
-            for (int val: row) {
-                if (val > 0) {
-                    sum += val;
-                    count++;
-                }
-            }
-        }
-        double mu = (count > 0) ? (sum / count) : 1.0;
+        const double mu = calculateMu(OMtime);
 
         // Prepare distributions for short and long setups
         int shortLowerr = static_cast<int>(std::round(shortLower * config.eta * mu));

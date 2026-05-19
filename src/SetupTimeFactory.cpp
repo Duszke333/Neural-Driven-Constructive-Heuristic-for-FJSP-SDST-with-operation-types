@@ -39,4 +39,18 @@ namespace jobshop {
         }
         // INFO("Ran floyd-warshall");
     }
+
+    double SetupTimeGenerator::calculateMu(const std::vector<std::vector<int> > &OMtime) {
+        double sum = 0;
+        int count = 0;
+        for (const auto &row: OMtime) {
+            for (int val: row) {
+                if (val > 0) {
+                    sum += val;
+                    count++;
+                }
+            }
+        }
+        return (count > 0) ? (sum / count) : 1.0;
+    }
 } // namespace jobshop
