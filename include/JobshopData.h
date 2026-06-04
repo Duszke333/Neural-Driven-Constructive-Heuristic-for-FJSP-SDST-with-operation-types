@@ -9,13 +9,15 @@ namespace jobshop {
     using namespace chof;
 
 
-    // typedef pair<int, Pos> BoxPosType;
-
-
+    /**
+     * @brief Structure representing the entire Flexible Job Shop Problem instance.
+     * Contains all necessary data to evaluate and schedule operations, including
+     * processing times and sequence-dependent setup times.
+     */
     struct JobshopData {
         struct JType {
-            int idx = -1;
-            vector<int> Ops; //< list of operation types
+            int idx = -1; ///< Unique identifier of the job.
+            vector<int> Ops; ///< Ordered sequence of operation types required to complete this job.
 
             bool operator==(const JType &o) const {
                 return idx == o.idx;
@@ -35,12 +37,15 @@ namespace jobshop {
             }
         };
 
+        /**
+         * @brief Represents a single scheduling decision (a block on a Gantt chart).
+         */
         struct Dec {
-            int m = -1; //< machine
-            int start_t = -1; //< start time
-            int end_t = -1; //< end time
-            int j = -1; //< job
-            int iop = -1; //< idx of task in a seqence of tasks of job j
+            int m = -1; ///< Assigned machine ID.
+            int start_t = -1; ///< Start time of the operation.
+            int end_t = -1; ///< End time of the operation.
+            int j = -1; ///< Assigned job ID.
+            int iop = -1; ///< Index of the operation within the job j's sequence.
 
             Dec() {
             }
@@ -49,14 +54,16 @@ namespace jobshop {
             }
         };
 
-        // DataConcept interface
-
+        /**
+         * @brief Holds the generated solution (schedule) for this problem instance.
+         * * Compliant with DataConcept interface.
+         * @see DataConcept
+         */
         struct SolutionType {
-            double obj;
-            vector<Dec> Decs;
-            int cluster = -1;
+            double obj; ///< Objective function value (e.g., makespan).
+            vector<Dec> Decs; ///< List of all scheduling decisions made.
+            int cluster = -1; ///< Optional cluster ID for grouped heuristics.
 
-            // interface of the SolutionConcept
             double getObj() const {
                 return obj;
             }
@@ -70,6 +77,7 @@ namespace jobshop {
             }
         };
 
+        // DataConcept interface methods
         double getObj() const {
             return Solution.getObj();
         }
@@ -82,27 +90,36 @@ namespace jobshop {
             Solution = _solution;
         }
 
-        // interface end
+        string name; ///< Name or identifier of the instance (e.g., from a file).
 
+        int numJ; ///< Total number of jobs.
+        int numO; ///< Total number of unique operation types.
+        int numM; ///< Total number of available machines.
 
-        string name;
+        vector<JType> Jobs; ///< List of all jobs in the problem.
 
-
-        int numJ; //< number of jobs (redundant)
-        int numO; //< number of operation types
-        int numM; //< number of machines
-
-        vector<JType> Jobs;
+        /**
+         * @brief Processing times matrix.
+         * Indexed as [OperationType][Machine].
+         * A value of 0 indicates that the operation cannot be processed on the given machine.
+         */
         vector<vector<int> > OMtime;
-        //< [Operation][Machine] -> processing time; 0 means operation cannot be processed on a given machine
 
-        vector<vector<vector<int> > > setupTimes; // [Machine][Previous Operation][Next Op
+        /**
+         * @brief Sequence-Dependent Setup Times (SDST) 3D matrix.
+         * Indexed as [Machine][PreviousOperationType][NextOperationType].
+         */
+        vector<vector<vector<int> > > setupTimes;
 
-        SolutionType Solution;
+        SolutionType Solution; ///< Current best solution for this instance.
 
         JobshopData() {
         }
 
+        /**
+         * @brief Prints the schedule in a human-readable CSV format.
+         * @param os Output stream to write the schedule to.
+         */
         void printSolution(std::ostream &os) {
             auto SortedDecs = Solution.Decs;
             sort(SortedDecs.begin(), SortedDecs.end(), [](auto &A, auto &B) {
@@ -120,4 +137,3 @@ namespace jobshop {
     static_assert(SolutionConcept<JobshopData::SolutionType>);
     static_assert(DataConcept<JobshopData>);
 }
-
