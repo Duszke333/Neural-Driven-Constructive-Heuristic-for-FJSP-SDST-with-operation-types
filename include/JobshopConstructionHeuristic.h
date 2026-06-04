@@ -84,7 +84,6 @@ namespace jobshop {
         }
 
         int getParamsSize() const {
-            // TODO
             return AF.getParamsSize() + (Conf.autoScale && !Conf.noAutoScaleEval ? Scale.size() : 0) + (
                        Conf.autoScaleNumOperationsInfo && !Conf.noAutoScaleEval ? ScaleNumOperationsInfo.size() : 0);
         }
