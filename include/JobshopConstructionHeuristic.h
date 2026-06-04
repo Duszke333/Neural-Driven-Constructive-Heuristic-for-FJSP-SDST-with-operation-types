@@ -21,29 +21,45 @@ namespace jobshop {
     using namespace ReadConfig;
     using namespace Eigen;
 
+    /**
+     * @brief Core Constructive Heuristic for the Flexible Job Shop Problem.
+     * * This class iteratively builds a schedule (Gantt chart) by selecting the best
+     * available job-machine pairing at each step. The selection is guided by an
+     * Assessment Function (AFType, usually a Neural Network) which evaluates the
+     * current state of the factory based on extracted features.
+     * * @tparam AFType The Assessment Function type (e.g., nnutils::FFN).
+     * @tparam GenConfType The configuration type for data generation.
+     */
     template<typename AFType, typename GenConfType>
     class JobshopConstructionHeuristic {
         friend class boost::serialization::access;
 
     public:
+        /**
+         * @brief Configuration and Feature Selection for the Heuristic.
+         * * Controls which pieces of information (features) are extracted from the
+         * current factory state and fed into the Assessment Function.
+         */
         struct ConfigType {
             friend class boost::serialization::access;
 
             using AFT = AFType;
             using GenConfT = GenConfType;
 
-            string desc;
-            bool noAutoScaleEval = false; //< during evaluation, do not do autoScale nor autoScaleNumOperationsInfo
-            //< this parameter is not boost::serialized
-            bool autoScale;
-            bool autoScaleNumOperationsInfo; //< if to auto scale vector numTaskInfo
-            bool nextOperationInfo; //< if to include the information on next operation
-            bool numOperationsInfo; //< if to include information on the number left of all task types
-            bool numAllOperationsInfo; //< if to include information on the number of all tasks left
-            int numM; //< number of machines
-            int numO;
-            typename AFType::ConfigType AConf;
-            GenConfType GConf;
+            string desc; ///< Human-readable description of the heuristic.
+
+            bool noAutoScaleEval = false; ///< If true, disables auto-scaling during evaluation (not boost::serialized).
+            bool autoScale; ///< Enables automatic scaling of machine-related features.
+            bool autoScaleNumOperationsInfo; ///< Enables scaling for the operations-left vector.
+            bool nextOperationInfo; ///< If true, includes one-hot encoding of the next operation in the job.
+            bool numOperationsInfo; ///< If true, includes the remaining count of all operation types.
+            bool numAllOperationsInfo; ///< If true, includes the total count of all remaining operations.
+
+            int numM; ///< Total number of machines in the problem space.
+            int numO; ///< Total number of operation types in the problem space.
+
+            typename AFType::ConfigType AConf; ///< Topology configuration for the Neural Network.
+            GenConfType GConf; ///< Data generation configuration.
 
             template<class Archive>
             void serialize(Archive &ar, const unsigned int version) {
@@ -60,15 +76,15 @@ namespace jobshop {
             }
         };
 
-    public:
         // ConstructionHeuristicConcept interface
         typedef JobshopData DataType;
 
         static bool maximize() {
-            return false;
+            return false; // Minimizing makespan
         }
 
         int getParamsSize() const {
+            // TODO
             return AF.getParamsSize() + (Conf.autoScale && !Conf.noAutoScaleEval ? Scale.size() : 0) + (
                        Conf.autoScaleNumOperationsInfo && !Conf.noAutoScaleEval ? ScaleNumOperationsInfo.size() : 0);
         }
@@ -103,31 +119,43 @@ namespace jobshop {
         }
 
         // end of interface
-    public:
-        // fields
         ConfigType Conf;
 
     protected:
+        /**
+         * @brief Trainable scaling parameters for machine workload normalization.
+         * * These values are appended to the neural network's weight vector and optimized
+         * directly by the CMA-ES algorithm. They allow the system to automatically learn
+         * the optimal normalization bounds (Auto-Scaling) for machine time features
+         * before feeding them into the activation function (scaleTanh).
+         */
         vector<float> Scale;
+
+        /**
+         * @brief Trainable scaling parameters for operation count normalization.
+         * * Similar to 'Scale', these variables are optimized by CMA-ES to learn how
+         * to best compress the "number of operations left" signal into the [-1, 1] range.
+         */
         vector<float> ScaleNumOperationsInfo;
 
-        AFType AF;
+        AFType AF; ///< The Assessment Function (Neural Network)
 
-        int numAllTasksLeft;
-        vector<vector<int> > JobsOperationsNumLeft; //< [job][operation] -> number left
-        vector<vector<int> > JobsOperationsLeft; //< [job] -> list of operations, in reverse order
-        vector<int> NumOperationsLeft; //< [task] -> number of left operations of this type
-        vector<int> JobMinTime; //< [job] -> minimum time, when the next operation can start
-        vector<int> MachineEndTime; //< [machine] -> schedule end time
-        vector<vector<int> > OperationsMachines; //< [operation] -> list of machines permitted
-        vector<vector<int> > MachinesOperations; //< [machine] -> list of operations permitted
+        int numAllTasksLeft; ///< Total operations left to schedule.
+        vector<vector<int> > JobsOperationsNumLeft; ///< [job][operation] -> number of operations left in the job.
+        vector<vector<int> > JobsOperationsLeft; ///< [job] -> sequence of operations in a job (in reverse order).
+        vector<int> NumOperationsLeft; ///< [operation] -> total left of this type across all jobs.
+        vector<int> JobMinTime; ///< [job] -> earliest time the next operation can start.
+        vector<int> MachineEndTime; ///< [machine] -> current end time of the machine's schedule.
 
-        Matrix<float, Dynamic, 1> View1D; //< [machine] -> diff between x_max and MachineEndTime
+        vector<vector<int> > OperationsMachines; ///< [operation] -> valid machines for this operation.
+        vector<vector<int> > MachinesOperations; ///< [machine] -> valid operations for this machine.
 
-        int x_max = 0; //< when  current schedule ends, max of MachineEndTimes
-        float avgOpTime = 1.0f; //< average operation duration
+        Matrix<float, Dynamic, 1> View1D; ///< [machine] -> diff between x_max and MachineEndTime.
 
-        Matrix<float, Dynamic, 1> NNInput;
+        int x_max = 0; ///< Current global makespan (max of MachineEndTime).
+        float avgOpTime = 1.0f; ///< Global average operation duration.
+
+        Matrix<float, Dynamic, 1> NNInput; ///< Buffer for the Neural Network feature vector.
 
     public:
         template<class Archive>
@@ -138,7 +166,6 @@ namespace jobshop {
             ar & AF;
         }
 
-    public:
         explicit JobshopConstructionHeuristic() {
         }
 
@@ -151,6 +178,18 @@ namespace jobshop {
         }
 
     protected:
+        // =====================
+        // CORE SCHEDULING LOGIC
+        // =====================
+
+        /**
+         * @brief Main scheduling loop (Greedy Construction).
+         * * Repeatedly scans all available operations and valid machines, calculates the state
+         * feature vector (NNInput), and asks the Neural Network to evaluate the move.
+         * The move with the highest activation value is chosen and applied to the schedule.
+         * @param IOD The problem instance data.
+         * @return The completed schedule and its makespan.
+         */
         DataType::SolutionType construct(const DataType &IOD) {
             DataType::SolutionType Solution;
 
@@ -159,22 +198,26 @@ namespace jobshop {
             Solution.Decs.clear();
             Solution.Decs.reserve(numAllTasksLeft);
 
+            // Continue until all operations for all jobs are scheduled
             while (numAllTasksLeft > 0) {
                 float best_v = -FLT_MAX;
                 int best_j = -1;
                 int best_m = -1;
                 int best_o = -1;
+
+                // Evaluate all valid (Job, Machine) pairs for the next operation
                 for (int j = 0; j < IOD.numJ; j++) {
                     if (JobsOperationsLeft[j].empty()) continue;
 
-                    int o = JobsOperationsLeft[j].back(); //< as it is in reverse order
+                    int o = JobsOperationsLeft[j].back(); // Get next operation (stored in reverse)
 
                     for (int m: OperationsMachines[o]) {
+                        // Extract factory state into a feature vector
                         prepareNNInput(IOD, j, m, o);
-
+                        // Use Neural Network for evaluation score
                         float v = AF(NNInput);
 
-
+                        // Keep track of the best move
                         if (v > best_v) {
                             best_v = v;
                             best_j = j;
@@ -189,10 +232,11 @@ namespace jobshop {
 
                 updateData(IOD, best_j, best_m, best_o);
 
+                // Apply the best move to the factory state
                 JobshopData::Dec D = {
                     best_m,
-                    MachineEndTime[best_m] - IOD.OMtime[best_o][best_m],
-                    MachineEndTime[best_m],
+                    MachineEndTime[best_m] - IOD.OMtime[best_o][best_m], // start time
+                    MachineEndTime[best_m], // end time
                     best_j,
                     (int) (IOD.Jobs[best_j].Ops.size() - (JobsOperationsLeft[best_j].size() + 1))
                 };
@@ -204,12 +248,12 @@ namespace jobshop {
             return Solution;
         }
 
-
+        /**
+         * @brief Initializes the factory simulation state before building a schedule.
+         * @param IOD Problem instance data.
+         */
         void init(const DataType &IOD) {
             Scale.assign(IOD.numM, 0.0f);
-
-            //  Scale = {0.7, 0.3, 0.5, -0.4, 0.18, 0.17, 0.6, 0.18, 0.04, -0.9, 0.24}; //!!!!!!!!!!!!!111
-
             ScaleNumOperationsInfo.assign(IOD.numO, 0.0f);
 
             x_max = 0;
@@ -231,10 +275,9 @@ namespace jobshop {
             }
 
             JobMinTime.assign(IOD.numJ, 0);
-
             MachineEndTime.assign(IOD.numM, 0);
 
-            // fill OperationsMachines and MachinesOperations
+            // Fill OperationsMachines and MachinesOperations mappings
             OperationsMachines.assign(IOD.numO, vector<int>());
             MachinesOperations.assign(IOD.numM, vector<int>());
 
@@ -281,17 +324,21 @@ namespace jobshop {
             NNInput.resize(Conf.AConf.numInputs, 1);
         }
 
-
+        /**
+         * @brief Updates the factory state after permanently assigning an operation to a machine.
+         * Advances the machine's local clock and the job's local clock.
+         */
         void updateData(const DataType &Data, int j, int m, int o) {
             numAllTasksLeft--;
             NumOperationsLeft[o]--;
             JobsOperationsNumLeft[j][o]--;
             JobsOperationsLeft[j].pop_back();
 
+            // The new end time is the max of when the machine is free and when the job is free, plus duration
             JobMinTime[j] = MachineEndTime[m] = max(MachineEndTime[m], JobMinTime[j]) + Data.OMtime[o][m];
 
+            // Update global makespan
             int delta_x = max(0, MachineEndTime[m] - x_max);
-
             if (delta_x > 0) {
                 View1D.array() += (float) delta_x;
                 x_max += delta_x;
@@ -300,34 +347,40 @@ namespace jobshop {
             View1D[m] = x_max - MachineEndTime[m];
         }
 
-
+        /**
+         * @brief Constructs the Feature Vector (NNInput) for the Neural Network.
+         * * This method translates the current simulation state and the proposed move
+         * (Job j, Machine m, Operation o) into a normalized float vector.
+         */
         void prepareNNInput(const DataType &Data, int j, int m, int o) {
+            // Calculate idle time (wasted time) if machine has to wait for the job to arrive
             int wasted = max(0, JobMinTime[j] - MachineEndTime[m]);
             int od = Data.OMtime[o][m]; //< operation duration on machine m
             int met = max(MachineEndTime[m], JobMinTime[j]) + od; //< machine end time, after inserting operation
 
-            // View1D
             int idx = 0;
             float sc = avgOpTime * 2;
+
+            // Segment 1: Machine workloads (Diff between global makespan and machine end time)
             for (int i = 0; i < Data.numM; i++) {
                 NNInput.middleRows(idx, Data.numM)(idx + i) = scaleTanh(0.5f / (sc * (1.0 + Scale[i])) * View1D[i]);
             }
+            // Temporarily simulate the move for the evaluated machine 'm'
             NNInput.middleRows(idx, Data.numM)(m) = scaleTanh(0.5f / (sc * (1.0 + Scale[m])) * (met - x_max));
-
             idx += Data.numM;
 
-            // current machine
+            // Segment 2: One-hot encoding of the evaluated Machine
             NNInput.middleRows(idx, Data.numM).array() = 0.0f;
             NNInput.middleRows(idx, Data.numM)(m) = 1.0f;
             idx += Data.numM;
 
-            // current operation
+            // Segment 3: One-hot encoding of the evaluated Operation
             NNInput.middleRows(idx, Data.numO).array() = 0.0f;
             NNInput.middleRows(idx, Data.numO)(o) = 1.0f;
             idx += Data.numO;
 
+            // Segment 4 [Optional]: One-hot encoding of the NEXT operation in the job sequence
             if (Conf.nextOperationInfo) {
-                // next operation in current job
                 NNInput.middleRows(idx, Data.numO).array() = 0.0f;
                 if (JobsOperationsLeft[j].size() > 1) {
                     int noi = JobsOperationsLeft[j].size() - 2;
@@ -337,22 +390,22 @@ namespace jobshop {
                 idx += Data.numO;
             }
 
+            // Segment 5 [Optional]: Number of remaining operations of each type globally
             if (Conf.numOperationsInfo) {
                 auto V = NNInput.middleRows(idx, Data.numO);
-
                 for (int i = 0; i < Data.numO; i++) {
                     V(i) = scaleTanh(0.5 / (2.0 * (1.0 + ScaleNumOperationsInfo[i])) * NumOperationsLeft[i]);
                 }
-
                 idx += Data.numO;
             }
 
+            // Segment 6 [Optional]: Total number of remaining operations overall
             if (Conf.numAllOperationsInfo) {
                 NNInput(idx) = scaleTanh(0.5f / (2 * Conf.numM) * numAllTasksLeft);
                 idx += 1;
             }
 
-            // operations left in current job
+            // Segment 7: Remaining operations of each type specifically in the CURRENT Job
             for (int i = 0; i < Data.numO; i++) {
                 NNInput(idx + i) = (JobsOperationsNumLeft[j][i] == 0
                                         ? 0.0f
@@ -360,21 +413,21 @@ namespace jobshop {
             }
             idx += Data.numO;
 
+            // Segment 8: Wasted (idle) time introduced by this assignment
             NNInput(idx) = scaleTanh(0.5f / (avgOpTime * (1.0 + Scale.back())) * wasted);
             idx += 1;
 
             if (NNInput.rows() != idx)
                 INTERNAL(
-                    "NNInput.rows() != idx (" + to_string(NNInput.rows()) + " != " + to_string(idx) + "), numO=" +
-                    to_string(Data.numO) + " numO=" + to_string(Conf.numO) + " numM=" + to_string(Data.numM) + " numM="
-                    + to_string(Conf.numM));
+                "NNInput.rows() != idx (" + to_string(NNInput.rows()) + " != " + to_string(idx) + "), numO=" +
+                to_string(Data.numO) + " numO=" + to_string(Conf.numO) + " numM=" + to_string(Data.numM) + " numM="
+                + to_string(Conf.numM));
         }
     };
 
-    // template<typename T>
-    // inline void to_json(nlohmann::json& j, const T& c) {
-    //     to_json<typename T::AF, typename T::GenConf>(j, c);
-    // }
+    // ==================
+    // JSON SERIALIZATION
+    // ==================
 
     template<typename T>
     auto to_json(nlohmann::json &j, const T &c)
@@ -394,12 +447,10 @@ namespace jobshop {
         j.emplace("GConf", c.GConf);
     }
 
-
     template<typename T>
     auto from_json(nlohmann::json &j, T &c)
         -> std::enable_if_t<std::is_same_v<T, typename JobshopConstructionHeuristic<typename T::AFT, typename
             T::GenConfT>::ConfigType> > {
-        //const nlohmann::json &j, typename JobshopConstructionHeuristic<AFType,GenConfType>::ConfigType &c) {
         j.at("desc").get_to(c.desc);
         j.at("noAutoScaleEval").get_to(c.noAutoScaleEval);
         j.at("autoScale").get_to(c.autoScale);
@@ -416,7 +467,3 @@ namespace jobshop {
 
     //  static_assert(chof::ConstructionHeuristicConcept<JobshopConstructionHeuristic<nnutils::FFN, GenConfigType>>);
 };
-
-
-
-
