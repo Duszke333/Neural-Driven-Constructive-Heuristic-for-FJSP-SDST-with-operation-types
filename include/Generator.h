@@ -17,33 +17,33 @@
 namespace jobshop {
     using namespace std;
     using namespace nnutils;
-    //using namespace __gnu_debug;
 
-
+    /**
+     * @brief Synthetic problem generator for the Flexible Job Shop Problem.
+     * * Generates randomized benchmark instances (including processing times and SDST matrices)
+     * based on predefined distributions and parameters.
+     */
     struct GeneratorRnd {
+        /**
+         * @brief Configuration parameters for the random data generator.
+         */
         struct GenConfigType {
             friend class boost::serialization::access;
-            string nameBase;
-            //            int num;
-            int seedCommon;
-            int seed;
-            int numM;
-            int numO;
-            bool multiOperation; //< are multiple tasks in the same job permited
-            pair<int, int> RangeOM; //< how many machines for single operation
-            pair<int, int> RangeJ; //< how many jobs
-            pair<int, int> RangeJO; //< how many operations is a single job
-            pair<int, int> RangeD; //< task duration range
 
-
-            // string to_string( string phase ) const {
-            //     return dir + "/" + phase + "/" + nameBase; // + "_" + to_string(hash_value());
-            // }
+            string nameBase; ///< Base name for generated instances.
+            int seedCommon; ///< Seed for shared/common factory layout generation.
+            int seed; ///< Seed for specific instance variations.
+            int numM; ///< Number of machines.
+            int numO; ///< Number of unique operation types.
+            bool multiOperation; ///< If true, allows multiple operations of the same type within a single job.
+            pair<int, int> RangeOM; ///< [min, max] compatible machines per operation type.
+            pair<int, int> RangeJ; ///< [min, max] total jobs in the instance.
+            pair<int, int> RangeJO; ///< [min, max] operations per single job.
+            pair<int, int> RangeD; ///< [min, max] duration of a single operation.
 
             template<class Archive>
             void serialize(Archive &ar, const unsigned int version) {
                 ar & nameBase;
-                // ar & num;
                 ar & seedCommon;
                 ar & seed;
                 ar & numM;
@@ -57,38 +57,32 @@ namespace jobshop {
         };
 
 
-        GenConfigType GConf;
+        GenConfigType GConf; ///< Current generator configuration.
 
-
-        // int num;
-        // DataLoaderJobshop( int _seed, string _filename, int _numM, int _numO, bool _multiOps, pair<int, int> _RangeOM, pair<int, int> _RangeJ, pair<int, int> _RangeJO, pair<int, int> _RangeT, int _numTotal, int _numValidation  )
-        // : seed(_seed), filename( _filename ), numTotal( _numTotal ), numValidation(_numValidation), numM( _numM ), numO( _numO ), multiOps(_multiOps), RangeOM(_RangeOM), RangeJ( _RangeJ ), RangeT( _RangeT ), RangeJO(_RangeJO) {
-        // }
-
+        /**
+         * @brief Constructor initializing the random generator with a specific configuration.
+         * @param _Conf The configuration object.
+         */
         GeneratorRnd(const GenConfigType &_Conf) : GConf(_Conf) {
         }
 
-        // GenConfigType& GenConfig() {
-        //     return GConf;
-        // }
-
-        //    vector<PalOpt::InputOutputData> IODs;
+        /**
+         * @brief Generates a specified number of randomized Job Shop instances.
+         * @param _seed Random seed override (if >= 0).
+         * @param _num Number of instances to generate.
+         * @param IODs Output vector where generated instances will be stored.
+         */
         void load(int _seed, int _num, vector<JobshopData> &IODs);
-
-        // static string composeFileName( const GenConfig &Conf, string dir, string prefix  ) {
-        //      return dir
-        //         + "/"
-        //         + prefix
-        //         + "_" + std::to_string( Conf.hash_value() );
-        //     ;
-        // }
     };
 
+
+    // =================================
+    // JSON SERIALIZATION (GeneratorRnd)
+    // =================================
 
     inline void to_json(nlohmann::json &j, const GeneratorRnd::GenConfigType &p) {
         j = nlohmann::json{};
         j.emplace("nameBase", p.nameBase);
-        // j.emplace("num", p.num);
         j.emplace("seedCommon", p.seedCommon);
         j.emplace("seed", p.seed);
         j.emplace("numM", p.numM);
@@ -102,7 +96,6 @@ namespace jobshop {
 
     inline void from_json(const nlohmann::json &j, GeneratorRnd::GenConfigType &p) {
         j.at("nameBase").get_to(p.nameBase);
-        // j.at("num").get_to(p.num);
         j.at("seedCommon").get_to(p.seedCommon);
         j.at("seed").get_to(p.seed);
         j.at("numM").get_to(p.numM);
@@ -114,110 +107,93 @@ namespace jobshop {
         j.at("RangeD").get_to(p.RangeD);
     }
 
+    // ===================
+    // TEXT FILE GENERATOR
+    // ===================
 
+    /**
+     * @brief Problem generator based on existing text files (e.g., benchmark datasets).
+     * * Loads a base structure from a file and can generate variations of it.
+     */
     struct GeneratorTxt {
+        /**
+         * @brief Configuration parameters for the text-based data generator.
+         */
         struct GenConfigType {
             friend class boost::serialization::access;
-            string txtFileName;
-            // int num;
-            int numM;
-            int numO;
-            int seed;
-            bool multiTask; //< are multiple tasks in the same job permited
-            pair<float, float> RangeJ; //< how many jobs, as fraction of the jobs number in txt file
 
-
-            // string to_string( string phase ) const {
-            //     return dir + "/" + phase + "/" + nameBase; // + "_" + to_string(hash_value());
-            // }
+            string txtFileName; ///< Path or base name of the source text file.
+            int numM; ///< Number of machines.
+            int numO; ///< Number of operation types.
+            int seed; ///< Seed for instance variations.
+            bool multiTask; ///< Are multiple tasks in the same job permitted.
+            pair<float, float> RangeJ; ///< [min, max] jobs, as a fraction of the jobs number in the txt file.
 
             template<class Archive>
             void serialize(Archive &ar, const unsigned int version) {
                 ar & txtFileName;
-                // ar & num;
                 ar & numM;
                 ar & numO;
                 ar & seed;
                 ar & multiTask;
                 ar & RangeJ;
-                // ar & RangeJO;
             }
         };
 
-        GenConfigType GConf;
+        GenConfigType GConf; ///< Current generator configuration.
+        JobshopData CommonIOD; ///< Common base structure parsed from the text file.
+        pair<int, int> RangeJO; ///< [min, max] how many operations in a single job.
 
-        // int num;
-
-        JobshopData CommonIOD;
-        pair<int, int> RangeJO; //< how many operations is a single job
-
-
-        // DataLoaderJobshop( int _seed, string _filename, int _numM, int _numO, bool _multiOps, pair<int, int> _RangeOM, pair<int, int> _RangeJ, pair<int, int> _RangeJO, pair<int, int> _RangeT, int _numTotal, int _numValidation  )
-        // : seed(_seed), filename( _filename ), numTotal( _numTotal ), numValidation(_numValidation), numM( _numM ), numO( _numO ), multiOps(_multiOps), RangeOM(_RangeOM), RangeJ( _RangeJ ), RangeT( _RangeT ), RangeJO(_RangeJO) {
-        // }
-
+        /**
+         * @brief Constructor initializing the generator and immediately parsing the text file.
+         * @param _Conf The configuration object.
+         */
         GeneratorTxt(const GenConfigType &_Conf) : GConf(_Conf) {
             readTxtFile();
         }
 
-        // GenConfigType& GenConfig() {
-        //     return GConf;
-        // }
-
-        // GeneratorTxt& completeGenTxtConfig( GenConfigType &_Conf) {
-        //     auto GConfTmp = GConf;
-        //     auto num_tmp = num;
-        //     GConf = _Conf;
-        //     num = 1;
-        //     vector<JobshopData> IODs;
-        //     load(IODs);
-        //     GConf.numM = IODs.front().numM;
-        //     GConf.numO = IODs.front().numO;
-        //     _Conf = GConf;
-        //     GConf = GConfTmp;
-        //     num = num_tmp;
-        //     return *this;
-        // }
-
+        /**
+         * @brief Retrieves the shared base instance configuration loaded from the file.
+         * @return A reference to the parsed CommonIOD structure.
+         */
         const JobshopData &getCommonDIO() {
             return CommonIOD;
         }
 
+        /**
+         * @brief Parses the underlying text file and populates the CommonIOD structure.
+         */
         void readTxtFile();
 
-        //    vector<PalOpt::InputOutputData> IODs;
+        /**
+         * @brief Generates a specified number of Job Shop instances based on the loaded text file.
+         * @param _seed Random seed override (if >= 0).
+         * @param num Number of instances to generate.
+         * @param IODs Output vector where generated instances will be stored.
+         */
         void load(int _seed, int num, vector<JobshopData> &IODs);
-
-        // static string composeFileName( const GenConfig &Conf, string dir, string prefix  ) {
-        //      return dir
-        //         + "/"
-        //         + prefix
-        //         + "_" + std::to_string( Conf.hash_value() );
-        //     ;
-        // }
     };
+
+    // =================================
+    // JSON SERIALIZATION (GeneratorTxt)
+    // =================================
 
     inline void to_json(nlohmann::json &j, const GeneratorTxt::GenConfigType &p) {
         j = nlohmann::json{};
         j.emplace("nameBase", p.txtFileName);
-        // j.emplace("num", p.num);
         j.emplace("numM", p.numM);
         j.emplace("numO", p.numO);
         j.emplace("seed", p.seed);
         j.emplace("multiTask", p.multiTask);
         j.emplace("RangeJ", p.RangeJ);
-        // j.emplace("RangeJO", p.RangeJO);
     }
 
     inline void from_json(const nlohmann::json &j, GeneratorTxt::GenConfigType &p) {
         j.at("nameBase").get_to(p.txtFileName);
-        // j.at("num").get_to(p.num);
         j.at("numM").get_to(p.numM);
         j.at("numO").get_to(p.numO);
         j.at("seed").get_to(p.seed);
         j.at("multiTask").get_to(p.multiTask);
         j.at("RangeJ").get_to(p.RangeJ);
-        // j.at("RangeJO").get_to(p.RangeJO);
     }
 }
-
