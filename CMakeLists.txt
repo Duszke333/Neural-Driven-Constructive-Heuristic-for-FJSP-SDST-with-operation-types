@@ -41,7 +41,6 @@ add_executable(nd-ch-fjsp
         include/DataConcept.h
         include/DataExport.h
         include/DataSetEvaluator.h
-        include/Enums.h
         include/Err.h
         include/FFN.h
         include/Generator.h
@@ -50,7 +49,6 @@ add_executable(nd-ch-fjsp
         include/learn.h
         include/ParallelDataSetEvaluator.h
         include/ParallelEvaluator.h
-        include/ReadConfig.h
         include/Testing.h
         include/utils.h
         include/io.h

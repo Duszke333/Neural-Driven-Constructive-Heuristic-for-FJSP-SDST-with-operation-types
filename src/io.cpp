@@ -19,7 +19,6 @@
 #include <boost/serialization/vector.hpp>
 #include <boost/serialization/utility.hpp>
 
-#include "Enums.h"
 #include "utils.h"
 #include "FFN.h"
 

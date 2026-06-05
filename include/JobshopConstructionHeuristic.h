@@ -18,7 +18,6 @@
 
 namespace jobshop {
     using namespace std;
-    using namespace ReadConfig;
     using namespace Eigen;
 
     /**

@@ -9,7 +9,6 @@
 #include "Err.h"
 #include "float.h"
 #include "libcmaes/cmaes.h"
-#include "ReadConfig.h"
 #include <nlohmann/json.hpp>
 #include <chrono>
 #include "utils.h"
