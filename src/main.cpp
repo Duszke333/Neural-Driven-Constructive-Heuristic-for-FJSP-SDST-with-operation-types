@@ -1,3 +1,20 @@
+/**
+* @file main.cpp
+ * @brief Main entry point for the Flexible Job Shop Scheduling heuristic optimizer.
+ * * ==============================================================================
+ * SUPPORTED CLI OPTIONS:
+ * ==============================================================================
+ * * [1. Generating Synthetic Data]
+ * --generate --output_dir=gen_dir --machines=num --operation_types=num --jobs_min=num --jobs_max=num --job_len_min=num --job_len_max=num  --num_alt_min=num --num_alt_max=num --t_min=num --t_max=num --set_size=num [-common_seed=1] [--seed=1]
+ * * [2. Generating Brandimarte Benchmarks]
+ * --generate --output_dir=gen_dir --brandimarte=id --set_size=size [--seed=1]
+ * * [3. Training (CMA-ES)]
+ * --train --output_dir=output_dir --files_dir=train_files_dir --val_set_size=size [-layer1=32] [layer2=16] [--seed=1] [--population=192] [--batch=50] [--max_evals=500000] [--sigma=0.1]
+ * * [4. Testing / Inference]
+ * --test --output_dir=output_dir --files_dir=test_files_dir --training_output_dir=training_output_dir [--schedules] [--graphics] [--seed=1] [--population=192] [--max_evals=500000] [--sigma=0.1] [--time_limit=60]
+ * ==============================================================================
+ */
+
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
 
@@ -14,23 +31,16 @@ using namespace std;
 
 #include  <filesystem>
 
-namespace chof {
-}
-
-
-// # options:
-// # generating
-// --generate --output_dir=gen_dir --machines=num --operation_types=num --jobs_min=num --jobs_max=num --job_len_min=num --job_len_max=num  --num_alt_min=num --num_alt_max=num --t_min=num --t_max=num --set_size=num [-common_seed=1] [--seed=1]
-// --generate --output_dir=gen_dir --brandimarte=id --set_size=size [--seed=1]
-// # training
-// --train --output_dir=output_dir --files_dir=train_files_dir --val_set_size=size [-layer1=32] [layer2=16] [--seed=1] [--population=192] [--batch=50] [--max_evals=500000] [--sigma=0.1]
-// # testing
-// --test --output_dir=ouput_dir --files_dir=test_files_dir --training_output_dir=training_output_dir [--schedules] [--graphics] [--seed=1] [--population=192] [--max_evals=500000] [--sigma=0.1] [--time_limit=60]
-
-
-// Helper class to manage memory and lifetime of argv
+/**
+ * @brief Helper class to manage memory and lifetime of simulated command line arguments.
+ * * Useful for parsing hardcoded command strings without memory leaks during internal testing.
+ */
 class CmdLineArgs {
 public:
+    /**
+     * @brief Constructs simulated argc and argv from a single command line string.
+     * @param commandLine The raw command string to parse.
+     */
     explicit CmdLineArgs(const std::string &commandLine) {
         std::stringstream ss(commandLine);
         std::string segment;
@@ -56,7 +66,9 @@ public:
         _argv[_argc] = nullptr; // Null terminate the array
     }
 
-    // Destructor to clean up memory automatically
+    /**
+     * @brief Destructor to clean up dynamically allocated string buffers safely.
+     */
     ~CmdLineArgs() {
         if (_argv) {
             for (int i = 0; i < _argc; ++i) {
@@ -75,39 +87,22 @@ private:
     char **_argv;
 };
 
-
+/**
+ * @brief Main program entry point.
+ * * Parses arguments and routes execution to the appropriate pipeline mode
+ * (training, testing, or data generation).
+ * @param argc Argument count.
+ * @param argv Argument vector.
+ * @return Execution status (0 on success).
+ */
 int main(int argc, char **argv) {
-    // //    Config Cfg = parse_command_line(argc, argv);
-    //
-    //    //  std::string cmd = "nd-fjsp-ch --generate=test_gen_dir_01 --machines=10 --operation_types=15 --jobs_min=20 --jobs_max=30 --job_len_min=5 --job_len_max=10 --num_alt_min=1 --num_alt_max=2 --t_min=10 --t_max=100 --set_size=50000";
-    //
-    //    // std::string cmd = "nd-fjsp-ch --generate=gen_dir --brandimarte=5 --set_size=25";
-    //
-    //      // std::string cmd = "nd-fjsp-ch --train=test_gen_dir_01 --run_name=train_01 --val_set_size=5000 --max_evals=5000";
-    //
-    //     // std::string cmd = "nd-fjsp-ch --test=test_dir_05 --run_name=train_01 --graphics --schedules --seed=15 --time_limit=6";
-    //
-    //
-    //      std::string cmd1 = "nd-fjsp-ch --generate --output_dir=test_gen_dir_02 --machines=10 --operation_types=15 --jobs_min=20 --jobs_max=30 --job_len_min=5 --job_len_max=10 --num_alt_min=1 --num_alt_max=2 --t_min=10 --t_max=100 --set_size=50000";
-    //     std::string cmd2 = "nd-fjsp-ch --generate --output_dir=test_gen_dir_brand --brandimarte=5 --set_size=55";
-    //     // # training
-    //     std::string cmd3 = "nd-fjsp-ch --train --output_dir=output_dir_ttt --files_dir=test_gen_dir_02 --val_set_size=10 --max_evals=5000";
-    //     // # testing
-    //     std::string cmd4 = "nd-fjsp-ch --test --output_dir=ouput_dir_test --files_dir=test_gen_dir_03 --training_output_dir=output_dir_ttt --time_limit=6 --schedules --graphics";
-    //
-
-
-    // 1. Convert string to argc/argv
-    // CmdLineArgs parser(cmd4);
-    //
-    // Config Cfg = parse_command_line(parser.argc(), parser.argv());
-
+    // Parse command line arguments into the global Config structure
     Config Cfg = parse_command_line(argc, argv);
 
-
-    // Using the overloaded << operator
+    // Using the overloaded << operator to print parsed configuration
     std::cout << Cfg << std::endl;
 
+    // Route to the selected application mode
     if (Cfg.mode_train) {
         jobshop::train(Cfg);
     } else if (Cfg.mode_test) {
