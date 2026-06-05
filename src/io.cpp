@@ -29,7 +29,14 @@
 namespace jobshop {
     namespace fs = std::filesystem;
 
-
+    /**
+     * @brief Parses a single Flexible Job Shop (.fjs) file and populates a JobshopData structure.
+     * * Reads machine counts, job sequences, operation alternatives, and optionally SDST matrices.
+     * @param file_name Path to the .fjs file.
+     * @param OperationTypesMap Global mapping of alternative configurations to unique Operation IDs.
+     * @param M Expected number of machines (used for validation).
+     * @param _IOD Output JobshopData structure to populate.
+     */
     void readFjsFile(string file_name, const map<vector<pair<int, int> >, int> &OperationTypesMap, int M,
                      JobshopData &_IOD) {
         JobshopData IOD;
@@ -44,7 +51,6 @@ namespace jobshop {
 
         auto ifs = nnutils::openFileWithDirs<ifstream>(file_name);
 
-
         IOD.name = std::filesystem::path(file_name).filename().string();
         IOD.Jobs.clear();
 
@@ -57,7 +63,7 @@ namespace jobshop {
             if (line.empty() || line.find_first_not_of(" \t\r\n") == std::string::npos) continue;
             if (line.find("SDST") != std::string::npos) {
                 reading_setups = true;
-                break; // Wychodzimy z głównej pętli, przezbrojenia wczytamy osobną
+                break; // Exit main loop, read setup times in separate loop
             }
 
             // Read each line
@@ -87,7 +93,7 @@ namespace jobshop {
 
                 int idx = 1;
 
-                // analyse all the operations
+                // Analyze all the operations
                 for (int i = 0; i < numbers[0]; i++) {
                     vector<pair<int, int> > Alternatives;
                     int num_alt = numbers[idx++];
@@ -110,12 +116,10 @@ namespace jobshop {
             line_number++;
         }
 
-
         IOD.numO = OperationTypesMap.size();
         IOD.numJ = IOD.Jobs.size();
 
         IOD.OMtime.assign(IOD.numO, vector<int>(IOD.numM, 0));
-
 
         for (auto &OT: OperationTypesMap) {
             auto &Alts = OT.first;
@@ -151,10 +155,12 @@ namespace jobshop {
     }
 
     /**
-      * Reads all the files from the dir_name into vector of JobshopData
-      * @param dir_path
-      * @return
-      */
+     * @brief Reads all .fjs files from a directory into a vector of JobshopData.
+     * @param dir_path Path to the directory containing datasets.
+     * @param OperationTypesMap Global mapping of operations.
+     * @param M Expected number of machines.
+     * @param IODs Output vector populated with parsed problem instances.
+     */
     void readFjsDir(string dir_path, const map<vector<pair<int, int> >, int> &OperationTypesMap, int M,
                     vector<JobshopData> &IODs) {
         IODs.clear();
@@ -177,10 +183,11 @@ namespace jobshop {
 
 
     /**
-     * Extract operation types and machine number from a file
-     * @param file_name
-     * @param OperationTypesMap
-     * @param M
+     * @brief Extracts operation types and machine count from a single file without fully parsing jobs.
+     * * Used in a preliminary pass to build a global vocabulary of operations before loading the dataset.
+     * @param file_name Path to the .fjs file.
+     * @param OperationTypesMap Map to be updated with new unique operation combinations.
+     * @param M Reference to the global machine count (updated and validated).
      */
     void extractOperationTypesMachinesFromFile(string file_name, map<vector<pair<int, int> >, int> &OperationTypesMap,
                                                int &M) {
@@ -221,7 +228,7 @@ namespace jobshop {
             } else {
                 int idx = 1;
 
-                // analyse all the operations
+                // Analyze all the operations
                 for (int i = 0; i < numbers[0]; i++) {
                     vector<pair<int, int> > Alternatives;
                     int num_alt = numbers[idx++];
@@ -241,7 +248,12 @@ namespace jobshop {
         }
     }
 
-
+    /**
+     * @brief Scans a directory of .fjs files to build a global map of operation types across the entire dataset.
+     * @param dir_name Path to the input directory.
+     * @param OperationTypesMap Output map to store global operations.
+     * @param M Output variable to store the verified machine count across all files.
+     */
     void extractOperationTypesAndMFromDir(string dir_name, map<vector<pair<int, int> >, int> &OperationTypesMap,
                                           int &M) {
         // Check if directory exists
@@ -261,6 +273,11 @@ namespace jobshop {
         }
     }
 
+    /**
+     * @brief Entry point for generating instances based on Brandimarte benchmarks.
+     * * Generates variations of a standard Brandimarte layout and exports them to .fjs format.
+     * @param Cfg Parsed command line arguments.
+     */
     void generateBrandimarte(Config Cfg) {
         typedef jobshop::GeneratorTxt GeneratorType;
         typedef GeneratorType::GenConfigType GenConfigType;
@@ -288,6 +305,10 @@ namespace jobshop {
         ofs << Cfg;
     }
 
+    /**
+     * @brief Entry point for generating purely random synthetic Job Shop instances.
+     * @param Cfg Parsed command line arguments defining parameters like machines, operations, and durations.
+     */
     void generateRandom(Config Cfg) {
         typedef jobshop::GeneratorRnd GeneratorType;
         typedef GeneratorType::GenConfigType GenConfigType;
@@ -317,11 +338,17 @@ namespace jobshop {
         ofs << Cfg;
     }
 
-
+    /**
+     * @brief Main pipeline for training the Neural Network Constructive Heuristic using CMA-ES.
+     * * 1. Reads the dataset and extracts operation types.
+     * * 2. Splits data into Training and Validation (TSS) sets.
+     * * 3. Configures the CMA-ES optimizer and FFN topology.
+     * * 4. Runs the learning loop and serializes the resulting model.
+     * @param Cfg Parsed command line arguments.
+     */
     void train(Config Cfg) {
         std::filesystem::current_path(".");
 
-        // typedef jobshop::GeneratorTxt GeneratorType;
         typedef jobshop::GeneratorRnd GeneratorType;
 
         typedef GeneratorType::GenConfigType GenConfigType;
@@ -349,7 +376,6 @@ namespace jobshop {
         TotalData.erase(TotalData.begin(), TotalData.begin() + Cfg.val_set_size);
 
         GenConfigType GConf;
-        // //  GConf.dir = "data/jobshop";
         GConf.nameBase = "fjsp"; //Cfg.run_name;
         GConf.seedCommon = 1;
         GConf.seed = 10000;
@@ -443,25 +469,21 @@ namespace jobshop {
 
 
     /**
-     *
-     *
-     *
-     * @param Cfg
+     * @brief Main pipeline for testing and evaluating a pre-trained model.
+     * * 1. Deserializes the trained Network (network.dat) and its vocabulary.
+     * * 2. Runs either inference (single pass) or local optimization on a new dataset.
+     * * 3. Logs performance metrics and optionally exports schedules and Gantt charts.
+     * @param Cfg Parsed command line arguments.
      */
     void test(Config Cfg) {
         bool single = (Cfg.max_evals == 1);
 
         std::filesystem::current_path(".");
 
-        // typedef jobshop::GeneratorTxt GeneratorType;
         typedef jobshop::GeneratorRnd GeneratorType;
-
         typedef GeneratorType::GenConfigType GenConfigType;
-
-
         typedef nnutils::FFN ASType;
         typedef jobshop::JobshopConstructionHeuristic<ASType, GenConfigType> TCHType;
-
 
         TOperationsTypesMap OperationTypesMap;
         int M;
