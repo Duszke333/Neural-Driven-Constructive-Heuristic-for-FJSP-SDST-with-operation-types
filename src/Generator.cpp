@@ -9,6 +9,10 @@
 #include "SetupTimeGenerator.h"
 
 namespace jobshop {
+    // ===============================
+    // RANDOM SYNTHETIC DATA GENERATOR
+    // ===============================
+
     void GeneratorRnd::load(int _seed, int num, vector<JobshopData> &IODs) {
         if (_seed >= 0) {
             GConf.seed = _seed;
@@ -22,16 +26,15 @@ namespace jobshop {
 
         IODs.resize(num);
 
-        // generate OMtime matrix with processing times of operations on machines
-        // this also includes the sets of machines capable of precessing operations
-        // common all generated data
-
+        // 1. Generate OMtime matrix with processing times of operations on machines.
+        // This also includes the sets of machines capable of processing given operations.
+        // This matrix is common to all generated instances in this specific batch.
         vector<vector<int> > OMtime(GConf.numO, vector<int>(GConf.numM, 0));
 
         if (GConf.RangeOM.second > GConf.numM) INTERNAL("RangeTM.second > numM");
 
         for (auto &Mtime: OMtime) {
-            //< how many machines will process given operation
+            // Determine how many machines will process the given operation
             int M = uniform_int_distribution<int>(GConf.RangeOM.first, GConf.RangeOM.second)(genCommon);
 
             fill(Mtime.begin(), Mtime.end(), 0);
@@ -46,7 +49,8 @@ namespace jobshop {
             }
         }
 
-        // TODO: read flags from CLI
+        // 2. Generate Sequence-Dependent Setup Times (SDST) based on the OMtime matrix
+        // TODO: read these parameters directly from CLI Config
         SetupConfig sConfig{};
         sConfig.variant = 5;
         sConfig.eta = 1.0;
@@ -60,7 +64,7 @@ namespace jobshop {
             globalSetupTimes = setupGen->generate(OMtime, GConf.numM, GConf.numO, sConfig, genCommon);
         }
 
-        // generate all the problems with common OMtime matrix
+        // 3. Generate all specific problem instances utilizing the common matrices
         for (int j = 0; j < IODs.size(); j++) {
             JobshopData &IOD = IODs[j];
 
@@ -70,14 +74,14 @@ namespace jobshop {
             IOD.numM = GConf.numM;
             IOD.numO = GConf.numO;
 
-            // generate jobs and their operations
+            // Generate jobs and their operations
             IOD.Jobs.resize(IOD.numJ);
 
             for (int j = 0; j < IOD.Jobs.size(); j++) {
                 auto &J = IOD.Jobs[j];
                 J.idx = j;
 
-                // generate number of operations for a given job
+                // Generate the number of operations for this specific job
                 int noj = uniform_int_distribution<int>(GConf.RangeJO.first, GConf.RangeJO.second)(gen);
 
                 if (GConf.multiOperation) {
@@ -102,17 +106,20 @@ namespace jobshop {
         }
     };
 
+    // =================================================
+    // TEXT FILE BENCHMARK GENERATOR (e.g., Brandimarte)
+    // =================================================
+
     void GeneratorTxt::readTxtFile() {
-        map<vector<pair<int, int> >, int> OperationTypesMap; //< vector<pair<machine, time>> -> idx
+        // Map associating unique combinations of (machine, processing_time) with an Operation ID
+        map<vector<pair<int, int> >, int> OperationTypesMap;
 
         auto get_or_insert = [&](vector<pair<int, int> > &data) -> int {
             auto [it, inserted] = OperationTypesMap.try_emplace(data, OperationTypesMap.size());
             return it->second;
         };
 
-
         auto ifs = openFileWithDirs<ifstream>(GConf.txtFileName);
-
 
         CommonIOD.name = std::filesystem::path(GConf.txtFileName).filename().string();
         CommonIOD.Jobs.clear();
@@ -120,8 +127,9 @@ namespace jobshop {
         int jidx = 0;
         int line_number = 0;
         std::string line;
+
+        // 1. Parse the text file line by line
         while (std::getline(ifs, line)) {
-            // Read each line
             std::vector<int> numbers;
             std::istringstream iss(line);
             int num;
@@ -134,6 +142,7 @@ namespace jobshop {
             if (numbers.empty()) continue;
 
             if (line_number == 0) {
+                // First line contains global dimensions
                 CommonIOD.numJ = numbers[0];
                 CommonIOD.numM = numbers[1];
             } else {
@@ -143,7 +152,7 @@ namespace jobshop {
 
                 int idx = 1;
 
-                // analyse all the operations
+                // Analyze all operations for the current job
                 for (int i = 0; i < numbers[0]; i++) {
                     vector<pair<int, int> > Alternatives;
                     int num_alt = numbers[idx++];
@@ -159,16 +168,13 @@ namespace jobshop {
                     CommonIOD.Jobs.back().Ops.push_back(ot);
                 }
             }
-
             line_number++;
         }
 
-
         CommonIOD.numO = OperationTypesMap.size();
-
         CommonIOD.OMtime.assign(CommonIOD.numO, vector<int>(CommonIOD.numM, 0));
 
-
+        // 2. Reconstruct the global OMtime matrix from parsed operations
         for (auto &OT: OperationTypesMap) {
             auto &Alts = OT.first;
             int ot = OT.second;
@@ -179,7 +185,7 @@ namespace jobshop {
             }
         }
 
-        // odczytanie zakresu liczby operacji w jobie
+        // 3. Determine the minimum and maximum number of operations per job in the dataset
         int min_jo = INT_MAX, max_jo = INT_MIN;
 
         for (auto &J: CommonIOD.Jobs) {
@@ -188,19 +194,8 @@ namespace jobshop {
         }
 
         RangeJO = make_pair(min_jo, max_jo);
-
         GConf.numM = CommonIOD.numM;
         GConf.numO = CommonIOD.numO;
-
-        // // duplikacja job'ów
-        // auto Jobs = CommonIOD.Jobs;
-        // int iii = Jobs.size();
-        // for ( auto &J: Jobs ) {
-        //     J.idx = iii;
-        //     ++iii;
-        // }
-        // CommonIOD.Jobs.insert(CommonIOD.Jobs.end(), Jobs.begin(), Jobs.end()); //!!!!!!!!!!!!!!!!!!!!!
-        // CommonIOD.numJ *= 2;
     }
 
 
@@ -209,18 +204,14 @@ namespace jobshop {
             GConf.seed = _seed;
         }
 
-
         mt19937 gen(GConf.seed);
 
         IODs.clear();
-
-
         IODs.resize(num);
 
+        // TODO: Generate or load setup times for text-based instances
 
-        // TODO: setup times
-
-        // generate all the problems with common OMtime matrix
+        // Generate all instance variations based on the common text-loaded structure
         for (int j = 0; j < IODs.size(); j++) {
             JobshopData &IOD = IODs[j];
 
@@ -234,14 +225,14 @@ namespace jobshop {
             IOD.numM = CommonIOD.numM;
             IOD.numO = CommonIOD.numO;
 
-            // generate jobs and their operations
+            // Generate jobs and their operations
             IOD.Jobs.resize(IOD.numJ);
 
             for (int j = 0; j < IOD.Jobs.size(); j++) {
                 auto &J = IOD.Jobs[j];
                 J.idx = j;
 
-                // generate number of operations for a given job
+                // Generate number of operations for a given job based on the original file's range
                 int noj = uniform_int_distribution<int>(RangeJO.first, RangeJO.second)(gen);
 
                 if (GConf.multiTask) {
