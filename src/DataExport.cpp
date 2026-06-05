@@ -15,14 +15,20 @@ namespace jobshop {
     using namespace std;
     using json = nlohmann::json;
 
+    /**
+     * @brief Helper structure for basic JSON metadata export (legacy format).
+     */
     struct Instance {
-        string name;
-        int jobs;
-        int machines;
-        string optimum;
-        string path;
+        string name; ///< Name of the instance.
+        int jobs; ///< Number of jobs.
+        int machines; ///< Number of machines.
+        string optimum; ///< Known optimum makespan (or "null" if unknown).
+        string path; ///< Path to the instance file.
     };
 
+    /**
+     * @brief Serializes the basic Instance structure to JSON.
+     */
     inline void to_json(nlohmann::json &j, const Instance &I) {
         j = nlohmann::json{};
         j.emplace("name", I.name);
@@ -32,6 +38,9 @@ namespace jobshop {
         j.emplace("path", I.path);
     }
 
+    /**
+     * @brief Deserializes JSON into the basic Instance structure.
+     */
     inline void from_json(const nlohmann::json &j, Instance &I) {
         j.at("name").get_to(I.name);
         j.at("jobs").get_to(I.jobs);
@@ -40,19 +49,24 @@ namespace jobshop {
         j.at("path").get_to(I.path);
     }
 
+    /**
+     * @brief Advanced helper structure for full JSON factory export (including detailed operations).
+     */
     struct Instance2 {
-        string name;
-        int numJ;
-        int numM;
-        int numO;
+        string name; ///< Name of the instance.
+        int numJ; ///< Total number of jobs.
+        int numM; ///< Total number of machines.
+        int numO; ///< Total number of operation types.
+
+        /** * @brief Multi-dimensional array storing job operations.
+         * Structure: Jobs[job_index][operation_index][alternative_machine_index] -> pair<duration, machine_id>
+         */
         vector<vector<vector<pair<int, int> > > > Jobs;
     };
 
-
-    using json = nlohmann::json;
-    using namespace std;
-
-
+    /**
+     * @brief Deserializes JSON into the advanced Instance2 structure.
+     */
     inline void from_json(const nlohmann::json &j, Instance2 &I) {
         j.at("name").get_to(I.name);
         j.at("numJ").get_to(I.numJ);
@@ -61,7 +75,11 @@ namespace jobshop {
         j.at("Jobs").get_to(I.Jobs);
     }
 
-
+    /**
+     * @brief Translates internal JobshopData into the serializable Instance2 structure.
+     * @param DIO The source JobshopData instance.
+     * @return Formatted Instance2 object ready for JSON export.
+     */
     Instance2 createInstance2(const JobshopData &DIO) {
         Instance2 I;
         I.name = DIO.name;
@@ -88,7 +106,13 @@ namespace jobshop {
     }
 
 
-    // Custom function to print JSON with line breaks after each vector<int>
+    /**
+     * @brief Custom function to print Instance2 as JSON with structured line breaks.
+     * * Ensures the resulting JSON file is human-readable by formatting nested arrays properly.
+     * @param ofs Output file stream.
+     * @param I Instance2 object to print.
+     * @param indent Current indentation level.
+     */
     void printInstance2(ofstream &ofs, Instance2 &I, int indent = 0) {
         string indentation(indent, ' ');
 
@@ -134,7 +158,12 @@ namespace jobshop {
         ofs << "}";
     }
 
-
+    /**
+     * @brief Exports a vector of datasets to the advanced JSON format.
+     * @param DIOs Vector of problem instances to export.
+     * @param dir Destination directory path.
+     * @param instancesFile Name of the output JSON file.
+     */
     void dataExport2(const vector<JobshopData> &DIOs, string dir, string instancesFile) {
         vector<Instance2> Instances;
 
@@ -162,10 +191,15 @@ namespace jobshop {
         }
     }
 
+    // =======================
+    // LEGACY EXPORT FUNCTIONS
+    // =======================
 
-    ////////////////// OLD //////////////////////////////////////////////
-
-
+    /**
+     * @brief Exports a single JobshopData instance to a legacy text format.
+     * @param DIO Problem instance to export.
+     * @param I Instance metadata defining the output path.
+     */
     static void dataExport(const JobshopData &DIO, const Instance &I) {
         ofstream ofs(I.path);
 
@@ -187,7 +221,12 @@ namespace jobshop {
         }
     }
 
-
+    /**
+     * @brief Exports a vector of datasets and generates a metadata JSON file (legacy format).
+     * @param DIOs Vector of problem instances to export.
+     * @param dir Destination directory path.
+     * @param instancesFile Name of the output JSON metadata file.
+     */
     void dataExport(const vector<JobshopData> &DIOs, string dir, string instancesFile) {
         vector<Instance> Instances;
 
@@ -213,53 +252,17 @@ namespace jobshop {
         }
     }
 
+    // ========================================
+    // FLEXIBLE JOB SHOP (FJS) BENCHMARK EXPORT
+    // ========================================
 
-    // void dataExport_fjs( const vector<JobshopData>& DIOs, string dir, string fjsFileName ) {
-    //
-    //     int idx = 0;
-    //     for ( auto &DIO: DIOs ) {
-    //
-    //         auto ofs = nnutils::openFileWithDirs<ofstream>(dir + "/" + fjsFileName + "_" +nnutils::to_string(idx++, 3) + ".fjs");
-    //
-    //         // computing average number of machines used by each operation
-    //         vector<vector<pair<int,int>>> operationMachines(DIO.OMtime.size()); // list of machines eligible for each operation pair<machine, duration>
-    //
-    //         for ( int o = 0; o < DIO.OMtime.size(); o++ ) {
-    //             for ( int m = 0; m < DIO.OMtime[o].size(); m++ ) {
-    //                 int dur = DIO.OMtime[o][m];
-    //                 if (dur > 0) {
-    //                     operationMachines[o].push_back(make_pair(m+1, dur));
-    //                 }
-    //             }
-    //         }
-    //
-    //         int sum = 0, num = 0;
-    //         for ( auto &J: DIO.Jobs ) {
-    //             for ( auto &o: J.Ops ) {
-    //                 sum += operationMachines[o].size();
-    //                 num += 1;
-    //             }
-    //         }
-    //
-    //         float avgNumMO = (float)sum / num;
-    //
-    //         ofs << DIO.numJ << " " << DIO.numM << " " << avgNumMO << endl;
-    //
-    //         for ( auto &J: DIO.Jobs ) {
-    //             ofs << J.Ops.size();
-    //             for ( auto &o: J.Ops ) {
-    //                 ofs << " " << operationMachines[o].size();
-    //                 for ( auto &MD: operationMachines[o] ) {
-    //                     ofs << " " << MD.first << " " << MD.second;
-    //                 }
-    //             }
-    //             ofs << endl;
-    //         }
-    //         ofs << flush;
-    //
-    //     }
-    // }
-
+    /**
+     * @brief Exports the dataset to the standard Flexible Job Shop (FJS) benchmark format.
+     * * Also includes Sequence-Dependent Setup Times (SDST) at the end of the file if present.
+     * @param DIOs Vector of problem instances to export.
+     * @param dir Destination directory path.
+     * @param fjsFileName Base name for the exported .fjs files.
+     */
     void dataExport_fjs(const vector<JobshopData> &DIOs, string dir, string fjsFileName) {
         int idx = 0;
         for (auto &DIO: DIOs) {
