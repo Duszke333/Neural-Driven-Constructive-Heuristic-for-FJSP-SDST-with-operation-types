@@ -130,9 +130,9 @@ namespace jobshop {
                 IOD.OMtime[ot][alt.first] = alt.second;
             }
         }
-
-        // TODO: TEST
-        IOD.setupTimes.assign(IOD.numO, std::vector<std::vector<int> >(IOD.numO, std::vector<int>(IOD.numM, 0)));
+        // setupTimes is indexed [Machine][FromOp][ToOp] (see JobshopData.h), so
+        // the outer dimension must be numM and the two inner dimensions numO.
+        IOD.setupTimes.assign(IOD.numM, std::vector<std::vector<int> >(IOD.numO, std::vector<int>(IOD.numO, 0)));
 
         if (reading_setups) {
             for (int m = 0; m < IOD.numM; ++m) {
@@ -210,6 +210,10 @@ namespace jobshop {
             std::vector<int> numbers;
             std::istringstream iss(line);
             int num;
+
+            if (line.find("SDST") != std::string::npos) {
+                break; // Exit main loop, read setup times in separate loop // TODO: SETUP TIMES
+            }
 
             while (iss >> num) {
                 // Extract numbers from the line

@@ -65,7 +65,9 @@ namespace nnutils {
 
             for (int l = 0; l < Conf.Topology.size(); ++l) {
                 Weights[l].resize(Conf.Topology[l], popSize);
+                Weights[l].setZero(); // Avoid reading uninitialized memory before setParams() is called
                 Biases[l].resize(Conf.Topology[l], 1);
+                Biases[l].setZero();
                 popSize = Conf.Topology[l];
             }
         }

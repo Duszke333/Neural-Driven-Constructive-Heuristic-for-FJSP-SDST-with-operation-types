@@ -109,9 +109,20 @@ target_link_libraries(nd-ch-fjsp PRIVATE
 #------------------------------
 # Compiler Flags
 #------------------------------
+# NOTE: Do NOT add -march=native (or any other flag that changes Eigen's
+# EIGEN_MAX_ALIGN_BYTES / EIGEN_MALLOC_ALREADY_ALIGNED detection) here unless
+# libcmaes is also rebuilt with the exact same flag. libcmaes ships most of
+# its algorithm as header-only C++ templates (CMAStrategy, GenoPheno,
+# Candidate, ...), which get instantiated both inside the pre-built
+# libcmaes.a (compiled with plain -O2, no -march) and inside this project's
+# own translation units. If the two use different alignment assumptions, the
+# linker's ODR-merge of these template instantiations mixes allocation and
+# deallocation schemes for the same Eigen objects, corrupting the heap
+# ("double free or corruption (out)" during CMA-ES training). This was
+# confirmed with a minimal libcmaes-only reproducer.
 target_compile_options(nd-ch-fjsp PRIVATE
-        $<$<CONFIG:Debug>:-O0 -g -march=native>
-        $<$<CONFIG:Release>:-O3 -DNDEBUG -march=native>
+        $<$<CONFIG:Debug>:-O0 -g>
+        $<$<CONFIG:Release>:-O3 -DNDEBUG>
 )
 
 #------------------------------

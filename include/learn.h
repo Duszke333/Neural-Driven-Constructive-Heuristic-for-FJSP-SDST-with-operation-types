@@ -1,6 +1,7 @@
 #pragma once
 #include <random>
 #include <iomanip>
+#include <set>
 #include "DataConcept.h"
 #include "ConstructionHeuristicConcept.h"
 #include "DataSetEvaluator.h"
@@ -171,7 +172,6 @@ namespace chof {
             }
         };
 
-
         vector<double> BestParams;
         double BestObj = (CH.maximize() ? -DBL_MAX : DBL_MAX);
         typename CHType::DataType::SolutionType BestSolution;
@@ -258,7 +258,6 @@ namespace chof {
         DataSetEvaluator DSE(TrainingDataP, CH);
         ParallelEvaluator PE(DSE);
 
-
         std::vector<double> x0;
         CH.getParams(x0);
 
@@ -295,7 +294,6 @@ namespace chof {
                 return 0;
             }
         };
-
 
         vector<double> BestParams;
         double BestObj = (CH.maximize() ? -DBL_MAX : DBL_MAX);
@@ -402,20 +400,21 @@ namespace chof {
             }
         }
 
-
         std::mt19937 gen(Config.seed);
 
         // Select the first training batch
         selectRandomData(gen, TotalData, Config.trainingDataSize, TrainingDataP);
 
         if constexpr (InitializedDataConcept<typename CHType::DataType>) {
-            for (auto TDP: TrainingDataP) {
+            std::set<typename CHType::DataType *> unique_data(TrainingDataP.begin(), TrainingDataP.end());
+            for (auto TDP: unique_data) {
                 TDP->init();
             }
         }
 
         DataSetEvaluator DSE(TrainingDataP, CH);
         ParallelEvaluator PE(DSE);
+
         std::function<double(const double *, const int &n)> F = PE;
 
         int dim = CH.getParamsSize();
@@ -486,7 +485,8 @@ namespace chof {
 
             // Clean memory and draw a NEW random mini-batch for the next generation
             if constexpr (InitializedDataConcept<typename CHType::DataType>) {
-                for (auto TDP: TrainingDataP) {
+                std::set<typename CHType::DataType *> unique_data(TrainingDataP.begin(), TrainingDataP.end());
+                for (auto TDP: unique_data) {
                     TDP->free();
                 }
             }
@@ -494,7 +494,8 @@ namespace chof {
             selectRandomData(gen, TotalData, Config.trainingDataSize, TrainingDataP);
 
             if constexpr (InitializedDataConcept<typename CHType::DataType>) {
-                for (auto TDP: TrainingDataP) {
+                std::set<typename CHType::DataType *> unique_data(TrainingDataP.begin(), TrainingDataP.end());
+                for (auto TDP: unique_data) {
                     TDP->init();
                 }
             }
@@ -519,7 +520,8 @@ namespace chof {
             x0 = BestXX;
 
             if constexpr (InitializedDataConcept<typename CHType::DataType>) {
-                for (auto TDP: TrainingDataP) {
+                std::set<typename CHType::DataType *> unique_data(TrainingDataP.begin(), TrainingDataP.end());
+                for (auto TDP: unique_data) {
                     TDP->free();
                 }
             }
@@ -575,20 +577,21 @@ namespace chof {
             }
         }
 
-
         std::mt19937 gen(Config.seed);
 
         selectRandomData(gen, TotalData, Config.trainingDataSize, TrainingDataP);
         TrainingDataP.front() = &_Data; // Force first element to be the target core instance
 
         if constexpr (InitializedDataConcept<typename CHType::DataType>) {
-            for (auto TDP: TrainingDataP) {
+            std::set<typename CHType::DataType *> unique_data(TrainingDataP.begin(), TrainingDataP.end());
+            for (auto TDP: unique_data) {
                 TDP->init();
             }
         }
 
         DataSetEvaluator DSE(TrainingDataP, CH);
         ParallelEvaluator PE(DSE);
+
         std::function<double(const double *, const int &n)> F = PE;
 
         int dim = CH.getParamsSize();
@@ -653,7 +656,8 @@ namespace chof {
             }
 
             if constexpr (InitializedDataConcept<typename CHType::DataType>) {
-                for (auto TDP: TrainingDataP) {
+                std::set<typename CHType::DataType *> unique_data(TrainingDataP.begin(), TrainingDataP.end());
+                for (auto TDP: unique_data) {
                     TDP->free();
                 }
             }
@@ -662,7 +666,8 @@ namespace chof {
             TrainingDataP.front() = &_Data; // Force core instance in every new batch
 
             if constexpr (InitializedDataConcept<typename CHType::DataType>) {
-                for (auto TDP: TrainingDataP) {
+                std::set<typename CHType::DataType *> unique_data(TrainingDataP.begin(), TrainingDataP.end());
+                for (auto TDP: unique_data) {
                     TDP->init();
                 }
             }
@@ -687,7 +692,8 @@ namespace chof {
             x0 = BestXX;
 
             if constexpr (InitializedDataConcept<typename CHType::DataType>) {
-                for (auto TDP: TrainingDataP) {
+                std::set<typename CHType::DataType *> unique_data(TrainingDataP.begin(), TrainingDataP.end());
+                for (auto TDP: unique_data) {
                     TDP->free();
                 }
             }
