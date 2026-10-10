@@ -47,7 +47,8 @@ git clone https://github.com/Decision-Support-and-OR-Group/Neural-Driven-Constru
 
 cd Neural-Driven-Constructive-Heuristic-for-FJSP-with-operation-types
 
-# if needed, modify CMakeLists.txt to point to libcmaes directories
+# by default CMakeLists.txt expects libcmaes in the parent directory (this repo cloned inside the libcmaes checkout);
+# otherwise pass -DCMAES_INCLUDE_DIR=... -DCMAES_LIB_DIR=... to cmake
 
 mkdir build
 cd build

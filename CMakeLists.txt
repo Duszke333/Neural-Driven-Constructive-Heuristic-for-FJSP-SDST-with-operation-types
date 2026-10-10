@@ -14,8 +14,12 @@ endif()
 #------------------------------
 # External Dependencies Paths
 #------------------------------
-set(CMAES_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/../libcmaes/include CACHE PATH "Path to cmaes include directory")
-set(CMAES_LIB_DIR ${CMAKE_SOURCE_DIR}/../libcmaes/src/.libs CACHE PATH "Path to cmaes library directory")
+# When project is installed inside libcmaes
+set(CMAES_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/../include CACHE PATH "Path to cmaes include directory")
+set(CMAES_LIB_DIR ${CMAKE_SOURCE_DIR}/../src/.libs CACHE PATH "Path to cmaes library directory")
+# When project is installed next to libcmaes
+#set(CMAES_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/../libcmaes/include CACHE PATH "Path to cmaes include directory")
+#set(CMAES_LIB_DIR ${CMAKE_SOURCE_DIR}/../libcmaes/src/.libs CACHE PATH "Path to cmaes library directory")
 set(EIGEN3_INCLUDE_DIR /usr/include/eigen3 CACHE PATH "Path to Eigen3 include directory")
 
 find_package(Threads REQUIRED)
