@@ -79,3 +79,5 @@ fabric.properties
 build/
 wip/
 training-problems/
+test-problems/
+test-results/
