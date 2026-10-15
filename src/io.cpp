@@ -457,14 +457,16 @@ namespace jobshop {
             .nextOperationInfo = false,
             .numOperationsInfo = true,
             .numAllOperationsInfo = false,
+            .setupTimeInfo = true,
             .numM = GConf.numM,
             .numO = GConf.numO,
             .AConf = {
                 .
-                numInputs = 2 * GConf.numM + 2 * GConf.numO + GConf.numO + 1,
+                numInputs = 2 * GConf.numM + 2 * GConf.numO + GConf.numO + 1 + 1, // +1: setup time
                 .Topology = {Cfg.layer1, Cfg.layer2, 1}
             },
-            .GConf = GConf
+            .GConf = GConf,
+            .setupMode = parseSetupMode(Cfg.setup_mode)
         };
 
         {
@@ -548,6 +550,7 @@ namespace jobshop {
             ia >> OperationTypesMap;
             cout << " ok." << endl << flush;
         }
+        BCH.Conf.setupMode = parseSetupMode(Cfg.setup_mode);
 
         cout << "Reading input data...";
         readFjsDir(Cfg.files_dir, OperationTypesMap, M, TotalData);

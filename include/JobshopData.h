@@ -46,6 +46,8 @@ namespace jobshop {
             int end_t = -1; ///< End time of the operation.
             int j = -1; ///< Assigned job ID.
             int iop = -1; ///< Index of the operation within the job j's sequence.
+            int setup_start = -1; ///< Start of the setup preceding the operation (machine free time).
+            int setup_t = 0; ///< Duration of the setup preceding the operation (the setup occupies [setup_start, setup_start + setup_t]).
 
             Dec() {
             }
@@ -126,10 +128,10 @@ namespace jobshop {
                 return A.m < B.m || A.m == B.m && A.start_t < B.start_t;
             });
 
-            os << "machine; job; operation number; operation_type; start_time; end_time " << endl;
+            os << "machine; job; operation number; operation_type; start_time; end_time; setup_start; setup_time" << endl;
             for (auto &Dec: SortedDecs) {
                 os << Dec.m << "; " << Dec.j << ";" << Dec.iop << ";" << Jobs[Dec.j].Ops[Dec.iop] << "; " << Dec.start_t
-                        << "; " << Dec.end_t << endl;
+                        << "; " << Dec.end_t << "; " << Dec.setup_start << "; " << Dec.setup_t << endl;
             }
         }
     };

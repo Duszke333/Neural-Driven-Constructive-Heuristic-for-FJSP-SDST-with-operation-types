@@ -14,6 +14,7 @@
 #include "Err.h"
 #include "utils.h"
 #include "Generator.h"
+#include "SetupTimeProvider.h"
 
 
 namespace jobshop {
@@ -53,12 +54,15 @@ namespace jobshop {
             bool nextOperationInfo; ///< If true, includes one-hot encoding of the next operation in the job.
             bool numOperationsInfo; ///< If true, includes the remaining count of all operation types.
             bool numAllOperationsInfo; ///< If true, includes the total count of all remaining operations.
+            bool setupTimeInfo = true; ///< If true, includes the setup time of the evaluated move as an input.
 
             int numM; ///< Total number of machines in the problem space.
             int numO; ///< Total number of operation types in the problem space.
 
             typename AFType::ConfigType AConf; ///< Topology configuration for the Neural Network.
             GenConfType GConf; ///< Data generation configuration.
+
+            SetupMode setupMode = SetupMode::Real; ///< Source of setup times (runtime only, not serialized).
 
             template<class Archive>
             void serialize(Archive &ar, const unsigned int version) {
@@ -68,6 +72,7 @@ namespace jobshop {
                 ar & nextOperationInfo;
                 ar & numOperationsInfo;
                 ar & numAllOperationsInfo;
+                ar & setupTimeInfo;
                 ar & numM;
                 ar & numO;
                 ar & AConf;
@@ -144,6 +149,7 @@ namespace jobshop {
         vector<int> NumOperationsLeft; ///< [operation] -> total left of this type across all jobs.
         vector<int> JobMinTime; ///< [job] -> earliest time the next operation can start.
         vector<int> MachineEndTime; ///< [machine] -> current end time of the machine's schedule.
+        vector<int> LastOpType; ///< [machine] -> type of the last operation scheduled on it (-1 if none).
 
         vector<vector<int> > OperationsMachines; ///< [operation] -> valid machines for this operation.
         vector<vector<int> > MachinesOperations; ///< [machine] -> valid operations for this machine.
@@ -152,6 +158,7 @@ namespace jobshop {
 
         int x_max = 0; ///< Current global makespan (max of MachineEndTime).
         float avgOpTime = 1.0f; ///< Global average operation duration.
+        static constexpr float SetupInputScale = 2.0f; ///< Setups are ~0.1-0.6 of avgOpTime; this keeps the input well within tanh range.
 
         Matrix<float, Dynamic, 1> NNInput; ///< Buffer for the Neural Network feature vector.
 
@@ -228,16 +235,8 @@ namespace jobshop {
                 if (best_j < 0)
                     INTERNAL("could not find assignment");
 
-                updateData(IOD, best_j, best_m, best_o);
-
                 // Apply the best move to the factory state
-                JobshopData::Dec D = {
-                    best_m,
-                    MachineEndTime[best_m] - IOD.OMtime[best_o][best_m], // start time
-                    MachineEndTime[best_m], // end time
-                    best_j,
-                    (int) (IOD.Jobs[best_j].Ops.size() - (JobsOperationsLeft[best_j].size() + 1))
-                };
+                JobshopData::Dec D = updateData(IOD, best_j, best_m, best_o);
                 Solution.Decs.push_back(D);
             }
 
@@ -274,6 +273,7 @@ namespace jobshop {
 
             JobMinTime.assign(IOD.numJ, 0);
             MachineEndTime.assign(IOD.numM, 0);
+            LastOpType.assign(IOD.numM, -1);
 
             // Fill OperationsMachines and MachinesOperations mappings
             OperationsMachines.assign(IOD.numO, vector<int>());
@@ -323,17 +323,31 @@ namespace jobshop {
         }
 
         /**
-         * @brief Updates the factory state after permanently assigning an operation to a machine.
-         * Advances the machine's local clock and the job's local clock.
+         * @brief Setup time of placing operation type o on machine m now. All reads of setup times go through
+         * SetupTimeProvider, so the mode (real/zero/one) is applied consistently to the schedule and NN input.
          */
-        void updateData(const DataType &Data, int j, int m, int o) {
+        int setupTime(const DataType &Data, int m, int o) const {
+            return SetupTimeProvider{Conf.setupMode}(Data, m, LastOpType[m], o);
+        }
+
+        /**
+         * @brief Updates the factory state after permanently assigning an operation to a machine.
+         * The setup (anticipatory) starts when the machine is free and may overlap the wait for the job:
+         * start = max(MachineEndTime + setup, JobMinTime), end = start + duration.
+         * @return The scheduling decision (operation start/end and the preceding setup).
+         */
+        JobshopData::Dec updateData(const DataType &Data, int j, int m, int o) {
             numAllTasksLeft--;
             NumOperationsLeft[o]--;
             JobsOperationsNumLeft[j][o]--;
             JobsOperationsLeft[j].pop_back();
 
-            // The new end time is the max of when the machine is free and when the job is free, plus duration
-            JobMinTime[j] = MachineEndTime[m] = max(MachineEndTime[m], JobMinTime[j]) + Data.OMtime[o][m];
+            int setup = setupTime(Data, m, o);
+            int setup_start = MachineEndTime[m];
+            int start = max(MachineEndTime[m] + setup, JobMinTime[j]);
+
+            JobMinTime[j] = MachineEndTime[m] = start + Data.OMtime[o][m];
+            LastOpType[m] = o;
 
             // Update global makespan
             int delta_x = max(0, MachineEndTime[m] - x_max);
@@ -343,6 +357,14 @@ namespace jobshop {
             }
 
             View1D[m] = x_max - MachineEndTime[m];
+
+            JobshopData::Dec D = {
+                m, start, MachineEndTime[m], j,
+                (int) (Data.Jobs[j].Ops.size() - (JobsOperationsLeft[j].size() + 1))
+            };
+            D.setup_start = setup_start;
+            D.setup_t = setup;
+            return D;
         }
 
         /**
@@ -352,9 +374,11 @@ namespace jobshop {
          */
         void prepareNNInput(const DataType &Data, int j, int m, int o) {
             // Calculate idle time (wasted time) if machine has to wait for the job to arrive
-            int wasted = max(0, JobMinTime[j] - MachineEndTime[m]);
+            int setup = setupTime(Data, m, o); //< setup before the operation (0 on an empty machine)
+            int start = max(MachineEndTime[m] + setup, JobMinTime[j]);
+            int wasted = start - MachineEndTime[m] - setup; //< pure idle time, setup is not idle
             int od = Data.OMtime[o][m]; //< operation duration on machine m
-            int met = max(MachineEndTime[m], JobMinTime[j]) + od; //< machine end time, after inserting operation
+            int met = start + od; //< machine end time, after inserting operation (incl. setup)
 
             int idx = 0;
             float sc = avgOpTime * 2;
@@ -415,6 +439,12 @@ namespace jobshop {
             NNInput(idx) = scaleTanh(0.5f / (avgOpTime * (1.0 + Scale.back())) * wasted);
             idx += 1;
 
+            // Segment 9 [Optional]: Setup time of the evaluated move
+            if (Conf.setupTimeInfo) {
+                NNInput(idx) = scaleTanh(SetupInputScale / avgOpTime * setup);
+                idx += 1;
+            }
+
             if (NNInput.rows() != idx)
                 INTERNAL(
                 "NNInput.rows() != idx (" + to_string(NNInput.rows()) + " != " + to_string(idx) + "), numO=" +
@@ -439,6 +469,7 @@ namespace jobshop {
         j.emplace("nextTaskInfo", c.nextOperationInfo);
         j.emplace("numTasksInfo", c.numOperationsInfo);
         j.emplace("numAllTasksInfo", c.numAllOperationsInfo);
+        j.emplace("setupTimeInfo", c.setupTimeInfo);
         j.emplace("numM", c.numM);
         j.emplace("numO", c.numO);
         j.emplace("AConf", c.AConf);
@@ -456,6 +487,7 @@ namespace jobshop {
         j.at("nextTaskInfo").get_to(c.nextOperationInfo);
         j.at("numTasksInfo").get_to(c.numOperationsInfo);
         j.at("numAllTasksInfo").get_to(c.numAllOperationsInfo);
+        if (j.contains("setupTimeInfo")) j.at("setupTimeInfo").get_to(c.setupTimeInfo);
         j.at("numM").get_to(c.numM);
         j.at("numO").get_to(c.numO);
         j.at("AConf").get_to(c.AConf);
