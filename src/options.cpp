@@ -85,6 +85,8 @@ Config parse_command_line(int argc, char *argv[]) {
             ("population", po::value(&config.population)->default_value(192), "Population size")
             ("max_evals", po::value(&config.max_evals)->default_value(500000), "Max evaluations")
             ("sigma", po::value(&config.sigma)->default_value(0.1), "Sigma")
+            ("setup_mode", po::value(&config.setup_mode)->default_value("real"),
+             "Setup times used by simulator and NN: real | zero | one")
             ("seed", po::value(&config.seed)->default_value(1), "Random seed");
 
     // --- Mode 4: Testing ---
@@ -99,6 +101,8 @@ Config parse_command_line(int argc, char *argv[]) {
             ("schedules", po::bool_switch(&config.schedules), "Save schedules")
             ("graphics", po::bool_switch(&config.graphics), "Show graphics")
             ("time_limit", po::value(&config.time_limit)->default_value(60), "Time limit (s)")
+            ("setup_mode", po::value(&config.setup_mode)->default_value("real"),
+             "Setup times used by simulator and NN: real | zero | one")
             ("seed", po::value(&config.seed)->default_value(1), "Random seed");
 
     // -------------------------------------------------------------------------

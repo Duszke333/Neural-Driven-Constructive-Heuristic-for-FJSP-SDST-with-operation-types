@@ -59,6 +59,7 @@ add_executable(nd-ch-fjsp
         include/options.h
         # SDST header files
         include/SetupTimeGenerator.h
+        include/SetupTimeProvider.h
         include/RandomSetupGenerator.h
         include/MachineDependentSetupGenerator.h
         include/AsymmetricSetupGenerator.h
