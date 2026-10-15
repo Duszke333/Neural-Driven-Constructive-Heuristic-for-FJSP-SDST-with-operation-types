@@ -86,6 +86,16 @@ namespace jobshop {
                 Rect.setOutlineThickness(-MACHINE_SIZE / 50);
             }
             Rect.setPosition(sf::Vector2f(PosX, PosY));
+            if (Dec.setup_t > 0) {
+                // Setup preceding the operation, drawn as a gray block
+                sf::RectangleShape SRect(sf::Vector2f(sx, -(Dec.setup_t * TSCALE)));
+                SRect.setFillColor(sf::Color(160, 160, 160));
+                SRect.setOutlineColor(sf::Color::Black);
+                SRect.setOutlineThickness(-MACHINE_SIZE / 50);
+                SRect.setPosition(sf::Vector2f(PosX, HEIGHT - (Dec.setup_start * TSCALE - 2)));
+                Rects.push_back(SRect);
+                Labels.push_back("");
+            }
             Rects.push_back(Rect);
             Labels.push_back(to_string(Dec.j) + " (" + to_string(o) + ")");
             d += 1;
