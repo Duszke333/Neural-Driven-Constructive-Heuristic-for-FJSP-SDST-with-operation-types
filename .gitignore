@@ -78,6 +78,6 @@ fabric.properties
 # Custom
 build/
 wip/
-training-problems/
-test-problems/
-test-results/
+training-problems*/
+test-problems*/
+test-results*/
