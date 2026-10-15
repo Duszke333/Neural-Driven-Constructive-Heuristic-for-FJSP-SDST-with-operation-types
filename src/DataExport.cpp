@@ -316,6 +316,15 @@ namespace jobshop {
                         ofs << "\n";
                     }
                 }
+                // Alternatives of every type id used to index the matrices above (lets the reader map ids)
+                ofs << "OPTYPES\n";
+                for (int o = 0; o < DIO.numO; ++o) {
+                    ofs << operationMachines[o].size();
+                    for (auto &MD: operationMachines[o]) {
+                        ofs << " " << MD.first << " " << MD.second;
+                    }
+                    ofs << "\n";
+                }
             }
 
             ofs << flush;
