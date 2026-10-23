@@ -66,6 +66,11 @@ struct Config {
     int t_max; ///< Maximum base processing time.
     int set_size; ///< Total number of instances to generate.
     int common_seed; ///< Seed for shared environment parameters.
+    std::string setup_variant = "resource"; ///< SDST variant: random | machine | asymmetric | clustered | resource.
+    double setup_eta = 1.0; ///< Global multiplier for setup times.
+    double setup_a = 0.2; ///< Lower bound factor of setup time range.
+    double setup_b = 0.4; ///< Upper bound factor of setup time range.
+    double setup_alpha = 0.5; ///< Additional scaling parameter of the SDST generator.
 
     // =====================
     // BRANDIMARTE GENERATOR

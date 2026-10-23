@@ -3,17 +3,44 @@
 #include <vector>
 #include <memory>
 #include <random>
+#include <string>
+#include <stdexcept>
 
 namespace jobshop {
+    /**
+     * @brief Available setup time generation variants.
+     */
+    enum class SetupVariant {
+        Random = 1, ///< Uniform random setup times ("random").
+        MachineDependent = 2, ///< Machine-dependent setup times ("machine").
+        Asymmetric = 3, ///< Asymmetric setup times ("asymmetric").
+        Clustered = 4, ///< Clustered operation types ("clustered").
+        Resource = 5 ///< Resource-swap based setup times ("resource").
+    };
+
+    /**
+     * @brief Parses a CLI variant name into a SetupVariant.
+     * @param name One of: random, machine, asymmetric, clustered, resource.
+     * @throws std::runtime_error if the name is unknown.
+     */
+    inline SetupVariant parseSetupVariant(const std::string &name) {
+        if (name == "random") return SetupVariant::Random;
+        if (name == "machine") return SetupVariant::MachineDependent;
+        if (name == "asymmetric") return SetupVariant::Asymmetric;
+        if (name == "clustered") return SetupVariant::Clustered;
+        if (name == "resource") return SetupVariant::Resource;
+        throw std::runtime_error("Invalid --setup_variant '" + name + "'. Use: random, machine, asymmetric, clustered, resource.");
+    }
+
     /**
      * @brief Configuration parameters for setup time generation.
      */
     struct SetupConfig {
-        int variant; ///< ID of the generation variant to use (1-5).
-        double eta; ///< Global multiplier for setup times.
-        double a; ///< Lower bound parameter for random distribution.
-        double b; ///< Upper bound parameter for random distribution.
-        double alpha; ///< Additional scaling parameter.
+        SetupVariant variant = SetupVariant::Resource; ///< Generation variant to use.
+        double eta = 1.0; ///< Global multiplier for setup times.
+        double a = 0.2; ///< Lower bound parameter for random distribution.
+        double b = 0.4; ///< Upper bound parameter for random distribution.
+        double alpha = 0.5; ///< Additional scaling parameter.
     };
 
     /**
@@ -61,8 +88,8 @@ namespace jobshop {
 
     /**
      * @brief Factory method that instantiates the appropriate generator based on the configuration variant.
-     * @param variant Integer ID representing the generation strategy (1-5).
+     * @param variant Generation strategy.
      * @return A unique pointer to the chosen SetupTimeGenerator implementation.
      */
-    std::unique_ptr<SetupTimeGenerator> createSetupTimeGenerator(int variant);
+    std::unique_ptr<SetupTimeGenerator> createSetupTimeGenerator(SetupVariant variant);
 } // namespace jobshop

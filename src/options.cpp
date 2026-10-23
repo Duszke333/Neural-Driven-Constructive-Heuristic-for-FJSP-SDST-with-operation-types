@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <algorithm>
 #include "options.h"
+#include "SetupTimeGenerator.h"
 #include "Err.h" // Assuming this exists as per original file
 
 // Helper to check if a value > 0
@@ -63,6 +64,11 @@ Config parse_command_line(int argc, char *argv[]) {
             ("t_max", po::value(&config.t_max), "Max processing time")
             ("set_size", po::value(&config.set_size), "Number of problems to generate")
             ("common_seed", po::value(&config.common_seed)->default_value(1), "Seed for common factory setup")
+            ("setup_variant", po::value(&config.setup_variant)->default_value("resource"),"Setup time variant: random | machine | asymmetric | clustered | resource")
+            ("setup_eta", po::value(&config.setup_eta)->default_value(1.0), "Setup time global multiplier")
+            ("setup_a", po::value(&config.setup_a)->default_value(0.2), "Setup time lower bound factor")
+            ("setup_b", po::value(&config.setup_b)->default_value(0.4), "Setup time upper bound factor")
+            ("setup_alpha", po::value(&config.setup_alpha)->default_value(0.5), "Setup time additional scaling parameter")
             ("seed", po::value(&config.seed)->default_value(1), "Random seed");
 
     // --- Mode 2: Brandimarte Generation ---
@@ -166,6 +172,10 @@ Config parse_command_line(int argc, char *argv[]) {
             check_range("job_len_min", config.job_len_min, "job_len_max", config.job_len_max);
             check_range("num_alt_min", config.num_alt_min, "num_alt_max", config.num_alt_max);
             check_range("t_min", config.t_min, "t_max", config.t_max);
+            jobshop::parseSetupVariant(config.setup_variant);
+            if (config.setup_eta <= 0) throw std::runtime_error("--setup_eta must be positive");
+            if (config.setup_a < 0 || config.setup_a > config.setup_b)
+                throw std::runtime_error("--setup_a must satisfy 0 <= setup_a <= setup_b");
         } else if (config.mode_gen_brand) {
             // Parse using Mode 2 rules
             po::store(po::command_line_parser(unrecognized).options(brand_opts).run(), vm_local);
@@ -223,6 +233,7 @@ std::ostream &operator<<(std::ostream &os, const Config &c) {
         os << "  Alt. Machines    : [" << c.num_alt_min << ", " << c.num_alt_max << "]\n";
         os << "  Processing Time  : [" << c.t_min << ", " << c.t_max << "]\n";
         os << "  Common Seed      : " << c.common_seed << "\n";
+        os << "  Setup Variant    : " << c.setup_variant << " (eta=" << c.setup_eta << ", a=" << c.setup_a << ", b=" << c.setup_b << ", alpha=" << c.setup_alpha << ")\n";
     } else if (c.mode_gen_brand) {
         os << "[Mode: Brandimarte Generation]\n";
         os << "  Output Directory : " << c.output_dir << "\n";

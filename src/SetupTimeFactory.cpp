@@ -7,17 +7,17 @@
 #include "Err.h"
 
 namespace jobshop {
-    std::unique_ptr<SetupTimeGenerator> createSetupTimeGenerator(int variant) {
+    std::unique_ptr<SetupTimeGenerator> createSetupTimeGenerator(SetupVariant variant) {
         switch (variant) {
-            case 1:
+            case SetupVariant::Random:
                 return std::make_unique<RandomSetupGenerator>();
-            case 2:
+            case SetupVariant::MachineDependent:
                 return std::make_unique<MachineDependentSetupGenerator>();
-            case 3:
+            case SetupVariant::Asymmetric:
                 return std::make_unique<AsymmetricSetupGenerator>();
-            case 4:
+            case SetupVariant::Clustered:
                 return std::make_unique<ClusteredSetupGenerator>();
-            case 5:
+            case SetupVariant::Resource:
                 return std::make_unique<ResourceSetupGenerator>();
             default:
                 return nullptr;

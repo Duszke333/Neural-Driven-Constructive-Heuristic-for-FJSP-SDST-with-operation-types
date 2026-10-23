@@ -5,7 +5,7 @@
  * SUPPORTED CLI OPTIONS:
  * ==============================================================================
  * * [1. Generating Synthetic Data]
- * --generate --output_dir=gen_dir --machines=num --operation_types=num --jobs_min=num --jobs_max=num --job_len_min=num --job_len_max=num  --num_alt_min=num --num_alt_max=num --t_min=num --t_max=num --set_size=num [-common_seed=1] [--seed=1]
+ * --generate --output_dir=gen_dir --machines=num --operation_types=num --jobs_min=num --jobs_max=num --job_len_min=num --job_len_max=num  --num_alt_min=num --num_alt_max=num --t_min=num --t_max=num --set_size=num [--common_seed=1] [--setup_variant=resource] [--setup_eta=1.0] [--setup_a=0.2] [--setup_b=0.4] [--setup_alpha=0.5] [--seed=1]
  * * [2. Generating Brandimarte Benchmarks]
  * --generate --output_dir=gen_dir --brandimarte=id --set_size=size [--seed=1]
  * * [3. Training (CMA-ES)]

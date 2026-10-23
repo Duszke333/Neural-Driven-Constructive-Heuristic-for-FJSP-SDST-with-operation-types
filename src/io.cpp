@@ -374,6 +374,11 @@ namespace jobshop {
         GConfTmp.RangeJ = {Cfg.jobs_min, Cfg.jobs_max};
         GConfTmp.RangeJO = {Cfg.job_len_min, Cfg.job_len_max};
         GConfTmp.RangeD = {Cfg.t_min, Cfg.t_max};
+        GConfTmp.setupConfig.variant = jobshop::parseSetupVariant(Cfg.setup_variant);
+        GConfTmp.setupConfig.eta = Cfg.setup_eta;
+        GConfTmp.setupConfig.a = Cfg.setup_a;
+        GConfTmp.setupConfig.b = Cfg.setup_b;
+        GConfTmp.setupConfig.alpha = Cfg.setup_alpha;
 
         GeneratorType Generator(GConfTmp);
 

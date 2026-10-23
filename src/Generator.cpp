@@ -50,17 +50,10 @@ namespace jobshop {
         }
 
         // 2. Generate Sequence-Dependent Setup Times (SDST) based on the OMtime matrix
-        // TODO: read these parameters directly from CLI Config
-        SetupConfig sConfig{};
-        sConfig.variant = 5;
-        sConfig.eta = 1.0;
-        sConfig.a = 0.2;
-        sConfig.b = 0.4;
-        sConfig.alpha = 0.5;
+        const SetupConfig &sConfig = GConf.setupConfig;
 
         std::vector<std::vector<std::vector<int> > > globalSetupTimes;
-        if (sConfig.variant > 0) {
-            auto setupGen = createSetupTimeGenerator(sConfig.variant);
+        if (auto setupGen = createSetupTimeGenerator(sConfig.variant)) {
             globalSetupTimes = setupGen->generate(OMtime, GConf.numM, GConf.numO, sConfig, genCommon);
         }
 

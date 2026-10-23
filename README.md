@@ -91,6 +91,14 @@ Mode 1 Options (--generate):
   --set_size arg         Number of problems to generate
   --common_seed arg (=1) Seed for common factory setup, shared among all 
                          generated problems
+  --setup_variant arg (=resource)
+                         Setup time (SDST) variant: random | machine |
+                         asymmetric | clustered | resource
+  --setup_eta arg (=1)   Setup time global multiplier
+  --setup_a arg (=0.2)   Setup time lower bound factor (random, machine)
+  --setup_b arg (=0.4)   Setup time upper bound factor (random, machine)
+  --setup_alpha arg (=0.5)
+                         Additional scaling parameter of the SDST generator
   --seed arg (=1)        Random seed
 
 Mode 2 Options (--generate --brandimarte=ID):
@@ -110,6 +118,8 @@ Mode 3 Options (--train):
   --population arg (=192)            Population size
   --max_evals arg (=500000)          Max evaluations
   --sigma arg (=0.10000000000000001) Sigma
+  --setup_mode arg (=real)           Setup times used by simulator and NN: 
+                                     real | zero | one
   --seed arg (=1)                    Random seed
 
 Mode 4 Options (--test):
@@ -122,6 +132,8 @@ Mode 4 Options (--test):
   --schedules                        Save schedules
   --graphics                         Show graphics
   --time_limit arg (=60)             Time limit (s)
+  --setup_mode arg (=real)           Setup times used by simulator and NN: 
+                                     real | zero | one
   --seed arg (=1)                    Random seed
 ```
 ### Examples
@@ -131,6 +143,7 @@ Typical workflow with the program looks as follows:
 ```
 ./nd-ch-fjsp --generate --output_dir=training-problems --machines=10 --operation_types=15 --jobs_min=20 --jobs_max=30 --job_len_min=5 --job_len_max=10 --num_alt_min=1 --num_alt_max=3 --t_min=10 --t_max=100 --set_size=100000 --common_seed=7 --seed=5000
 ```
+To pick a different setup time (SDST) variant, add e.g. `--setup_variant=clustered` (optionally with `--setup_eta`, `--setup_a`, `--setup_b`, `--setup_alpha`). The SDST settings are part of the factory setup, so use the same values for training and test sets.
 
 2. Train new network on generated problems. Save the network in the 'trained-network' directory.
 ```

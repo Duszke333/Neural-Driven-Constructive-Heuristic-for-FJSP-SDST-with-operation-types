@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 
+#include "SetupTimeGenerator.h"
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/serialization/utility.hpp>
@@ -40,6 +41,7 @@ namespace jobshop {
             pair<int, int> RangeJ; ///< [min, max] total jobs in the instance.
             pair<int, int> RangeJO; ///< [min, max] operations per single job.
             pair<int, int> RangeD; ///< [min, max] duration of a single operation.
+            jobshop::SetupConfig setupConfig; ///< SDST generation settings (not serialized).
 
             template<class Archive>
             void serialize(Archive &ar, const unsigned int version) {
