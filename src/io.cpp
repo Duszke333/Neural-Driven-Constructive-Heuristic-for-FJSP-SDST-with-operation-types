@@ -24,6 +24,7 @@
 
 #include "JobshopData.h"
 #include "DataExport.h"
+#include "ScheduleValidator.h"
 #include "JobshopDrawer.h"
 
 namespace jobshop {
@@ -453,6 +454,9 @@ namespace jobshop {
         LConf.numValidationThreads = 24;
         LConf.storeProgressInfo = true;
         LConf.progressFile = Cfg.output_dir + "/progress.csv";
+        LConf.checkpointFile = Cfg.output_dir + "/checkpoint.dat";
+        LConf.resume = Cfg.resume;
+        LConf.checkpointEvery = std::max(1, Cfg.checkpoint_every);
 
         typename TCHType::ConfigType CHConf = {
             .desc = "Flexible Job Shop Constructive Heuristic",
@@ -480,6 +484,9 @@ namespace jobshop {
                 ERROR("Results file already present, remove it, exiting... (" +Cfg.output_dir + "/network.dat)");
             }
         }
+        if (!Cfg.resume && std::filesystem::exists(Cfg.output_dir + "/checkpoint.dat")) {
+            ERROR("Checkpoint present in " + Cfg.output_dir + ", use --resume to continue or remove it");
+        }
 
 
         LearnConfig LConfig = LConf;
@@ -495,7 +502,15 @@ namespace jobshop {
         TCHType CH(CHConf);
         TCHType CHOut;
 
+        chof::installStopHandlers();
+
         double ret = chof::learn(LConfig, CH, TotalData, ValidationData, CHOut);
+
+        if (chof::stopRequested().load()) {
+            cout << "Training interrupted; checkpoint saved in " << Cfg.output_dir
+                 << "/checkpoint.dat. Re-run with --resume to continue." << endl;
+            return;
+        }
 
         {
             auto ofs = nnutils::openFileWithDirs<ofstream>(Cfg.output_dir + "/network.dat", ios::binary);
@@ -520,6 +535,9 @@ namespace jobshop {
                 outfile2 << endl;
             }
         }
+
+        std::error_code rmEc;
+        std::filesystem::remove(Cfg.output_dir + "/checkpoint.dat", rmEc);
     }
 
 
@@ -572,6 +590,7 @@ namespace jobshop {
 
         double sum = 0;
         int num = 0;
+        int numInvalid = 0;
 
         chof::OptConfig OConf;
         OConf.seed = Cfg.seed;
@@ -603,6 +622,12 @@ namespace jobshop {
             time_ms = (double) elapsed_us / 1000.0;
             D.setSolution(S);
 
+            string violation = jobshop::validateSchedule(D, BCH.Conf.setupMode);
+            if (!violation.empty()) {
+                WARN("Invalid schedule for " + D.name + ": " + violation);
+                numInvalid++;
+            }
+
             cout << "." << flush;
 
             ofs_det << "eval" << "; " << Cfg.files_dir << "; " << D.name << "; " << S.getObj() << "; " << time_ms << ";"
@@ -618,6 +643,9 @@ namespace jobshop {
         double time_avg_ms = (double) elapsed_ms / TotalData.size();
 
         ofs_sum << "eval" << "; " << Cfg.files_dir << "; ; " << sum / num << "; " << time_avg_ms << endl << flush;
+
+        cout << endl << (num - numInvalid) << "/" << num << " schedules valid" << endl << flush;
+        if (numInvalid > 0) WARN(to_string(numInvalid) + " invalid schedule(s) found");
 
         if (Cfg.graphics) {
             JobshopDrawer JD;

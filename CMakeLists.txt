@@ -39,6 +39,7 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}
 add_executable(nd-ch-fjsp
         # Headers (in include/)
         include/BlackBoxEvaluatorConcept.h
+        include/Checkpoint.h
         include/chof.h
         include/ClusteringConstructionHeuristic.h
         include/ConstructionHeuristicConcept.h
@@ -58,6 +59,7 @@ add_executable(nd-ch-fjsp
         include/io.h
         include/options.h
         # SDST header files
+        include/ScheduleValidator.h
         include/SetupTimeGenerator.h
         include/SetupTimeProvider.h
         include/RandomSetupGenerator.h
@@ -146,3 +148,6 @@ add_custom_command(TARGET nd-ch-fjsp POST_BUILD
         COMMENT "Ensuring executable is in project root..."
 )
 
+
+add_executable(validator-test EXCLUDE_FROM_ALL tests/validator_test.cpp include/ScheduleValidator.h)
+target_include_directories(validator-test PRIVATE "${CMAKE_SOURCE_DIR}/include" "${EIGEN3_INCLUDE_DIR}" "/usr/include/eigen3")

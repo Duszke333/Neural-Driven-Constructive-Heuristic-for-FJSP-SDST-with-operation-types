@@ -9,7 +9,7 @@
  * * [2. Generating Brandimarte Benchmarks]
  * --generate --output_dir=gen_dir --brandimarte=id --set_size=size [--seed=1]
  * * [3. Training (CMA-ES)]
- * --train --output_dir=output_dir --files_dir=train_files_dir --val_set_size=size [-layer1=32] [layer2=16] [--seed=1] [--population=192] [--batch=50] [--max_evals=500000] [--sigma=0.1]
+ * --train --output_dir=output_dir --files_dir=train_files_dir --val_set_size=size [-layer1=32] [layer2=16] [--seed=1] [--population=192] [--batch=50] [--max_evals=500000] [--sigma=0.1] [--resume] [--checkpoint_every=10]
  * * [4. Testing / Inference]
  * --test --output_dir=output_dir --files_dir=test_files_dir --training_output_dir=training_output_dir [--schedules] [--graphics] [--seed=1] [--population=192] [--max_evals=500000] [--sigma=0.1] [--time_limit=60]
  * ==============================================================================

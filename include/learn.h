@@ -13,6 +13,7 @@
 #include <nlohmann/json.hpp>
 #include <chrono>
 #include "utils.h"
+#include "Checkpoint.h"
 
 
 namespace chof {
@@ -84,6 +85,9 @@ namespace chof {
         int trainingDataSize; ///< Number of instances in a single training batch.
         int itersToValidate; ///< Number of iterations (generations) before applying validation.
         int numValidationThreads; ///< Number of threads allocated for the validation pass.
+        string checkpointFile = ""; ///< Checkpoint path (empty = checkpointing disabled).
+        bool resume = false; ///< Resume training from checkpointFile.
+        int checkpointEvery = 10; ///< Save a checkpoint every N CMA-ES iterations.
 
         LearnConfig() {
         }
@@ -380,10 +384,36 @@ namespace chof {
                  CHType &CHOut) {
         auto time_start = std::chrono::steady_clock::now();
 
+        string fingerprint;
+        {
+            ostringstream fp;
+            fp << CH.getParamsSize() << "|" << Config.population << "|" << Config.trainingDataSize << "|"
+                    << Config.seed << "|" << Config.itersToValidate;
+            for (int ne: Config.NumEvals) fp << "," << ne;
+            fingerprint = fp.str();
+        }
+
+        const bool useCheckpoint = !Config.checkpointFile.empty();
+        TrainingCheckpoint resumeCp;
+        const bool resuming = Config.resume;
+        if (resuming) {
+            if (!useCheckpoint || !loadCheckpoint(Config.checkpointFile, resumeCp)) {
+                ERROR("Cannot resume: checkpoint missing or unreadable (" + Config.checkpointFile + ")");
+            }
+            if (resumeCp.fingerprint != fingerprint) {
+                ERROR("Cannot resume: checkpoint was created with a different configuration");
+            }
+            INFO("Resuming from checkpoint: stage " + to_string(resumeCp.stage) + ", fevals " +
+                 to_string(resumeCp.fevals));
+        }
+        const double elapsedOffset = resuming ? resumeCp.elapsedSeconds : 0.0;
+
         std::ofstream outfile2;
         if (Config.storeProgressInfo) {
             outfile2 = nnutils::openFileWithDirs<ofstream>(Config.progressFile, std::ios::app);
-            outfile2 << "n-iter; fevals; curr_obj; best_obj; avg_fval; best_fval; time" << endl;
+            if (!resuming) {
+                outfile2 << "n-iter; fevals; curr_obj; best_obj; avg_fval; best_fval; time" << endl;
+            }
         }
 
         vector<typename CHType::DataType *> TrainingDataP;
@@ -401,6 +431,10 @@ namespace chof {
         }
 
         std::mt19937 gen(Config.seed);
+        if (resuming) {
+            istringstream rs(resumeCp.rngState);
+            rs >> gen;
+        }
 
         // Select the first training batch
         selectRandomData(gen, TotalData, Config.trainingDataSize, TrainingDataP);
@@ -425,11 +459,25 @@ namespace chof {
 
         vector<double> BestXX;
         double BestObj = (CH.maximize() ? -DBL_MAX : DBL_MAX);
+        int stageStart = 0;
+        int stage = 0;
+        int fevalsOffset = 0;
+        int niterOffset = 0;
+        int lastBatch = 0;
+        if (resuming) {
+            BestXX = resumeCp.bestX;
+            BestObj = resumeCp.bestObj;
+            stageStart = resumeCp.stage;
+            fevalsOffset = resumeCp.fevals;
+            niterOffset = resumeCp.niter;
+            lastBatch = resumeCp.lastBatch;
+        }
 
         // Progress callback acting as the validation mechanism
         ProgressFunc<CMAParameters<>, CMASolutions> progress_func =
                 [&](const CMAParameters<> &cmaparams, const CMASolutions &cmasols) {
-            static int last_batch = 0;
+            const int totalFevals = cmasols.fevals() + fevalsOffset;
+            const int totalIter = cmasols.niter() + niterOffset;
 
             double ssum = 0.0;
             int nnum = 0;
@@ -450,11 +498,11 @@ namespace chof {
             }
 
             auto Params = cmasols.best_candidate().get_x();
-            int new_batch = cmasols.fevals() / (Config.itersToValidate * Config.population);
+            int new_batch = totalFevals / (Config.itersToValidate * Config.population);
 
             // Run validation every 'itersToValidate' batches
-            if ((new_batch != last_batch && cmasols.niter() > 0) || cmasols.niter() == 1) {
-                last_batch = new_batch;
+            if ((new_batch != lastBatch && totalIter > 0) || totalIter == 1) {
+                lastBatch = new_batch;
 
                 // Evaluate current model on the held-out validation set
                 ParallelDataSetEvaluator TSS(ValidationDataP, CH, Config.numValidationThreads);
@@ -470,10 +518,10 @@ namespace chof {
 
                 auto time_end = std::chrono::steady_clock::now();
                 auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(time_end - time_start).count();
-                double time_s = 0.001 * elapsed_ms;
+                double time_s = 0.001 * elapsed_ms + elapsedOffset;
 
                 if (outfile2.is_open()) {
-                    outfile2 << setprecision(4) << cmasols.niter() << "; " << cmasols.fevals() << "; " << TSSobj << "; "
+                    outfile2 << setprecision(4) << totalIter << "; " << totalFevals << "; " << TSSobj << "; "
                             << BestObj << "; " << ssum / nnum << "; " << cmasols.best_candidate().get_fvalue();
                     outfile2 << setprecision(2) << "; " << std::fixed << time_s << endl << flush;
                 }
@@ -500,17 +548,48 @@ namespace chof {
                 }
             }
 
-            return 0;
+            const bool stopNow = stopRequested().load();
+            if (useCheckpoint && !BestXX.empty() && (stopNow || totalIter % Config.checkpointEvery == 0)) {
+                TrainingCheckpoint cp;
+                cp.fingerprint = fingerprint;
+                cp.stage = stage;
+                cp.fevals = totalFevals;
+                cp.niter = totalIter;
+                cp.lastBatch = lastBatch;
+                // Effective step size: sigma scaled by the mean per-coordinate std of the separable covariance
+                const double meanVar = cmasols.sepcov().size() > 0 ? cmasols.sepcov().mean() : 1.0;
+                cp.sigma = cmasols.sigma() * std::sqrt(meanVar);
+                cp.bestObj = BestObj;
+                cp.elapsedSeconds = 0.001 * std::chrono::duration_cast<std::chrono::milliseconds>(
+                                        std::chrono::steady_clock::now() - time_start).count() + elapsedOffset;
+                const auto xm = cmasols.xmean();
+                cp.xmean.assign(xm.data(), xm.data() + xm.size());
+                cp.bestX = BestXX;
+                ostringstream rs;
+                rs << gen;
+                cp.rngState = rs.str();
+                if (!saveCheckpoint(Config.checkpointFile, cp)) {
+                    cerr << "Warning: failed to write checkpoint " << Config.checkpointFile << endl;
+                }
+            }
+
+            return stopNow ? 1 : 0;
         };
 
         // Main CMA-ES Loop
-        for (int it = 0; it < Config.NumEvals.size(); it++) {
-            CMAParameters<> cmaparams(x0, Config.Sigmas[it], Config.population, (it + 1) * (Config.seed + 1) * 100);
+        for (int it = stageStart; it < Config.NumEvals.size(); it++) {
+            stage = it;
+            double stageSigma = Config.Sigmas[it];
+            if (resuming && it == stageStart) {
+                x0 = resumeCp.xmean;
+                stageSigma = resumeCp.sigma;
+            }
+            CMAParameters<> cmaparams(x0, stageSigma, Config.population, (it + 1) * (Config.seed + 1) * 100);
 
             cmaparams.set_algo(sepaCMAES);
             cmaparams.set_mt_feval(Config.mt_feval);
             cout << "multi threading:" << (Config.mt_feval ? "yes" : "no") << endl << flush;
-            cmaparams.set_max_fevals(Config.NumEvals[it]);
+            cmaparams.set_max_fevals(max(1, Config.NumEvals[it] - fevalsOffset));
             cmaparams.set_quiet(Config.quiet);
             cmaparams.set_maximize(CH.maximize());
             cmaparams.set_stopping_criteria(EQUALFUNVALS, false);
@@ -518,6 +597,8 @@ namespace chof {
 
             CMASolutions cmasols = cmaes<>(F, cmaparams, progress_func);
             x0 = BestXX;
+            fevalsOffset = 0;
+            niterOffset = 0;
 
             if constexpr (InitializedDataConcept<typename CHType::DataType>) {
                 std::set<typename CHType::DataType *> unique_data(TrainingDataP.begin(), TrainingDataP.end());
@@ -525,6 +606,8 @@ namespace chof {
                     TDP->free();
                 }
             }
+
+            if (stopRequested().load()) break;
         }
 
         outfile2.close();

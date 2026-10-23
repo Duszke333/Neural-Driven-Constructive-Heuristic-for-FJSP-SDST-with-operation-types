@@ -120,6 +120,10 @@ Mode 3 Options (--train):
   --sigma arg (=0.10000000000000001) Sigma
   --setup_mode arg (=real)           Setup times used by simulator and NN: 
                                      real | zero | one
+  --resume                           Resume training from 
+                                     <output_dir>/checkpoint.dat
+  --checkpoint_every arg (=10)       Save a checkpoint every N CMA-ES 
+                                     iterations
   --seed arg (=1)                    Random seed
 
 Mode 4 Options (--test):
@@ -149,6 +153,7 @@ To pick a different setup time (SDST) variant, add e.g. `--setup_variant=cluster
 ```
 ./nd-ch-fjsp --train --files_dir=training-problems --output_dir=trained-network --val_set_size=10000 --max_evals=500000
 ```
+Training saves `trained-network/checkpoint.dat` every `--checkpoint_every` iterations and on Ctrl-C / SIGTERM (final `network.dat` is written only when training finishes). To continue later, re-run the same command with `--resume` (all other training options must stay the same). Resuming restores the CMA-ES mean, step size, evaluation counter, best weights and batch RNG; only the CMA-ES evolution paths restart, so a short adaptation transient is expected. The checkpoint is deleted when training completes.
 
 3. Generate smaller set of test problems and save them into 'test-problems' directory. Important is, that most options, with exception to 'seed' (but also 'jobs_min' and 'jobs_max') are the same as in the training set, as those values describe unchanged factory setup.
 ```
@@ -159,3 +164,6 @@ To pick a different setup time (SDST) variant, add e.g. `--setup_variant=cluster
 ```
 ./nd-ch-fjsp --test --output_dir=test-results --files_dir=test-problems --training_output_dir=trained-network --time_limit=100 --schedules --graphics
 ```
+
+Every schedule produced by `--test` is automatically validated (`include/ScheduleValidator.h`): each operation scheduled once on an eligible machine with the correct duration, job precedence, no machine overlap, setup times of the chosen `--setup_mode`, and objective equal to the makespan. Violations are logged as warnings and the number of valid schedules is printed at the end.
+The validator can be self-tested with `cd build && ninja validator-test && ./validator-test`.

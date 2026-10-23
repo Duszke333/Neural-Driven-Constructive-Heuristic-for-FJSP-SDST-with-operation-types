@@ -46,6 +46,8 @@ struct Config {
     int population; ///< Number of candidates per generation (lambda).
     int max_evals; ///< Absolute maximum number of objective function evaluations.
     double sigma; ///< Initial step size (standard deviation) for CMA-ES.
+    bool resume = false; ///< Resume training from the checkpoint in output_dir.
+    int checkpoint_every = 10; ///< Save a training checkpoint every N CMA-ES iterations.
     std::string setup_mode = "real"; ///< Source of setup times: real | zero | one (mock for experiments).
     bool schedules; ///< If true, saves the full schedules to CSV during testing.
     bool graphics; ///< If true, triggers JobshopDrawer to render Gantt charts.

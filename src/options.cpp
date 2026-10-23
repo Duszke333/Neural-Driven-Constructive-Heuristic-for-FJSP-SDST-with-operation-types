@@ -93,6 +93,8 @@ Config parse_command_line(int argc, char *argv[]) {
             ("sigma", po::value(&config.sigma)->default_value(0.1), "Sigma")
             ("setup_mode", po::value(&config.setup_mode)->default_value("real"),
              "Setup times used by simulator and NN: real | zero | one")
+            ("resume", po::bool_switch(&config.resume), "Resume training from <output_dir>/checkpoint.dat")
+            ("checkpoint_every", po::value(&config.checkpoint_every)->default_value(10), "Save a checkpoint every N CMA-ES iterations")
             ("seed", po::value(&config.seed)->default_value(1), "Random seed");
 
     // --- Mode 4: Testing ---
