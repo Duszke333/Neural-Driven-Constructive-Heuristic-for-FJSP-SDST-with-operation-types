@@ -89,9 +89,8 @@ namespace jobshop {
             if (Dec.setup_t > 0) {
                 // Setup preceding the operation, drawn as a gray block
                 sf::RectangleShape SRect(sf::Vector2f(sx, -(Dec.setup_t * TSCALE)));
+                // No outline: short setups are only a few pixels tall and an inner outline would hide the fill
                 SRect.setFillColor(sf::Color(160, 160, 160));
-                SRect.setOutlineColor(sf::Color::Black);
-                SRect.setOutlineThickness(-MACHINE_SIZE / 50);
                 SRect.setPosition(sf::Vector2f(PosX, HEIGHT - (Dec.setup_start * TSCALE - 2)));
                 Rects.push_back(SRect);
                 Labels.push_back("");
@@ -121,6 +120,18 @@ namespace jobshop {
         }
 
         window.draw(text);
+
+        // Legend: gray block = setup time
+        sf::RectangleShape legendBox({16, 16});
+        legendBox.setFillColor(sf::Color(160, 160, 160));
+        legendBox.setOutlineColor(sf::Color::Black);
+        legendBox.setOutlineThickness(1);
+        legendBox.setPosition(8, 12);
+        window.draw(legendBox);
+        txtNum.setString("= setup");
+        txtNum.setCharacterSize(20);
+        txtNum.setPosition(30, 6);
+        window.draw(txtNum);
 
         // }
         sf::Texture outputTexture = window.getTexture();
