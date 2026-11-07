@@ -81,3 +81,7 @@ wip/
 training-problems*/
 test-problems*/
 test-results*/
+wut-master-thesis/
+
+# Bulk generated datasets
+datasets/
